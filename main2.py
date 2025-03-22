@@ -462,13 +462,13 @@ def main():
     # --------------------------------------------------
     with tabs[0]:
         st.header("Overview")
-        st.markdown("""
-    **Network capture summary**:
-    - Total packets analyzed
-    - Protocol distribution
-    - Capture timeframe
-    - Estimated packet loss
-    """)
+    #     st.markdown("""
+    # **Network capture summary**:
+    # - Total packets analyzed
+    # - Protocol distribution
+    # - Capture timeframe
+    # - Estimated packet loss
+    # """)
 
         # For the Overview tab, replace the timestamp metrics with more useful information
         # Calculate metrics for Overview tab
@@ -500,6 +500,8 @@ def main():
             st.plotly_chart(fig_proto, use_container_width=True)
         else:
             st.info("No protocol data available.")
+
+            
 
     # --------------------------------------------------
     # TAB 2: Delay Analysis Dashboard
