@@ -2,7 +2,15 @@ import pyshark
 import pandas as pd
 import numpy as np
 #from data_generator import generate_dummy_delays  # Only if you need dummy data
+from data_generator import generate_dummy_delays
+import asyncio
+import nest_asyncio
+import sys
 
+if sys.platform == "win32":
+    # Windows-specific event loop policy
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+nest_asyncio.apply()
 def parse_pcap(file_path):
     """
     Parse a .pcap or .pcapng using PyShark and extract:
@@ -12,6 +20,12 @@ def parse_pcap(file_path):
       - clients: IPs initiating MQTT CONNECT
       - brokers: IPs responding with CONNACK
     """
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    cap = pyshark.FileCapture(file_path, display_filter="mqtt or tcp or udp",eventloop=loop,use_json=True)
+
     # Capture all protocols
     cap = pyshark.FileCapture(file_path)
     
@@ -112,6 +126,7 @@ def parse_pcap(file_path):
         })
     
     cap.close()
+    loop.close()
     
     # Build DataFrames
     df_packets = pd.DataFrame(packet_records).sort_values("timestamp").reset_index(drop=True)
