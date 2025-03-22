@@ -1,0 +1,12 @@
+# Streamlit for interactive web apps
+streamlit>=1.12.0
+
+# Data manipulation and analysis
+pandas>=1.0.0
+numpy>=1.18.0
+
+# Packet capture and analysis
+pyshark>=0.4.2
+
+# Interactive plotting and visualizations
+plotly>=5.0.0
