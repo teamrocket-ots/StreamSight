@@ -40,11 +40,14 @@ def main():
         temp_path = os.path.join(temp_dir.name, uploaded_file.name)
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.read())
-        df_packets, df_delays, df_retrans = parse_pcap(temp_path)
+        df_packets, df_delays, df_retrans, clients, brokers = parse_pcap(temp_path)
         st.sidebar.success("PCAP parsed successfully!")
     else:
         st.sidebar.info("No PCAP uploaded. Using dummy data.")
         df_packets, df_delays, df_retrans = generate_dummy_packets()
+        # For dummy data, set clients and brokers to empty sets
+        clients, brokers = set(), set()
+
 
     # Add session state for filtering
     st.session_state.setdefault("filter_protocol", "")
