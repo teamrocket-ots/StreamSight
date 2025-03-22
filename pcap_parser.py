@@ -2,7 +2,14 @@ import pyshark
 import pandas as pd
 import numpy as np
 from data_generator import generate_dummy_delays
+import asyncio
+import nest_asyncio
+import sys
 
+if sys.platform == "win32":
+    # Windows-specific event loop policy
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+nest_asyncio.apply()
 def parse_pcap(file_path):
     """
     Parse a .pcap or .pcapng using PyShark and extract MQTT delays.
@@ -11,8 +18,12 @@ def parse_pcap(file_path):
       - df_delays: Table of actual MQTT delays across different stages
       - df_retrans: TCP retransmission events
     """
-    cap = pyshark.FileCapture(file_path, display_filter="mqtt or tcp or udp")
-    
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    cap = pyshark.FileCapture(file_path, display_filter="mqtt or tcp or udp",eventloop=loop,use_json=True)
+
     packet_records = []
     retrans_times = []
     mqtt_messages = {}  # Track MQTT messages by ID
@@ -77,6 +88,7 @@ def parse_pcap(file_path):
         })
 
     cap.close()
+    loop.close()
 
     df_packets = pd.DataFrame(packet_records).sort_values("timestamp").reset_index(drop=True)
     df_retrans = pd.DataFrame({"time": retrans_times, "event": ["TCP Retransmission"]*len(retrans_times)})

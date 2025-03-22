@@ -10,3 +10,6 @@ pyshark>=0.4.2
 
 # Interactive plotting and visualizations
 plotly>=5.0.0
+
+#windows_push
+nest-asyncio==1.6.0
