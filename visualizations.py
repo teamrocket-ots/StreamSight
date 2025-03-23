@@ -5,7 +5,8 @@ import pandas as pd
 
 def hist_with_boundaries(df, xcol, title, color="royalblue"):
     """
-    Create a histogram with better visual boundaries and statistical annotations.
+    Create a histogram with improved visual boundaries and statistical annotations.
+    Returns None if the DataFrame is empty or the specified column is missing.
     """
     if xcol not in df.columns or df[xcol].empty:
         fig = go.Figure()
@@ -15,10 +16,10 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
     # Calculate optimal bin count using Freedman-Diaconis rule
     q75, q25 = np.percentile(df[xcol], [75, 25])
     iqr = q75 - q25
-    bin_width = 2 * iqr / (len(df) ** (1/3)) if iqr > 0 else 0.01
-    bin_count = int(np.ceil((df[xcol].max() - df[xcol].min()) / bin_width))
-    bin_count = max(10, min(30, bin_count))  # Keep between 10-30 bins
-    
+    bin_width = 2 * iqr / (len(data) ** (1/3)) if iqr > 0 else 0.01
+    bin_count = int(np.ceil((data.max() - data.min()) / bin_width))
+    bin_count = max(10, min(30, bin_count))  # Keep between 10 and 30 bins
+
     fig = px.histogram(
         df,
         x=xcol,
@@ -28,7 +29,7 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         color_discrete_sequence=[color]
     )
     
-    # Add clear visual distinction to bars
+    # Enhance bar visibility with borders
     fig.update_traces(
         marker=dict(
             line=dict(color='rgba(0, 0, 0, 0.5)', width=1)
@@ -36,12 +37,12 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         opacity=0.8
     )
     
-    # Calculate statistics
-    mean_val = df[xcol].mean()
-    std_val = df[xcol].std()
-    median_val = df[xcol].median()
+    # Calculate basic statistics
+    mean_val = data.mean()
+    std_val = data.std()
+    median_val = data.median()
     
-    # Add more visible annotations
+    # Add vertical lines for mean and median
     fig.add_vline(
         x=mean_val,
         line_width=2,
@@ -62,7 +63,7 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         annotation_font=dict(size=12)
     )
     
-    # Make standard deviation range more visible
+    # Add a shaded area representing ±1 standard deviation
     fig.add_vrect(
         x0=mean_val-std_val,
         x1=mean_val+std_val,
@@ -73,9 +74,9 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         annotation_position="bottom right"
     )
     
-    # Improve overall appearance
+    # Update layout for overall appearance
     fig.update_layout(
-        bargap=0.1,  # Gap between bars
+        bargap=0.1,
         plot_bgcolor='rgba(240, 240, 240, 0.8)',
         xaxis=dict(showgrid=True, gridcolor='rgba(200, 200, 200, 0.2)'),
         yaxis=dict(showgrid=True, gridcolor='rgba(200, 200, 200, 0.2)')
