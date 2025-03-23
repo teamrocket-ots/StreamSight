@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from rootcause_analysis import RootCauseAnalysis
 
 def compute_packet_loss(df_packets, df_retrans):
     """
@@ -278,3 +279,43 @@ def analyze_mqtt_delays(df_mqtt):
             stats[f'{delay_type}_std'] = df_mqtt[delay_type].std()
     
     return df_mqtt, stats
+
+def perform_root_cause_analysis(df_packets: pd.DataFrame, df_delays: pd.DataFrame):
+    """
+        Example wrapper function demonstrating usage of the RootCauseAnalysis.
+        Collects relevant data from existing DataFrames and feeds them into the
+        new root cause analysis module.
+    
+        :param df_packets: DataFrame of general packet data
+        :param df_delays: DataFrame of delay measurements
+     :return: Generated text report
+    """
+    rca = RootCauseAnalysis()
+
+    # Example: correlate total_delay with packet size, protocol, and IPs
+    # Using columns: 'total_delay', 'protocol', 'src_ip', 'dst_ip'
+    # If your DataFrame columns differ, adjust accordingly.
+    if not df_packets.empty and "protocol" in df_packets.columns:
+        for idx, row in df_packets.iterrows():
+            # Dummy fallback for demonstration
+            # You can link actual delays from df_delays based on message IDs or timestamps if desired
+            delay_value = 0.0
+            if not df_delays.empty and idx < len(df_delays):
+                if "total_delay" in df_delays.columns:
+                    delay_value = df_delays.iloc[idx]["total_delay"]
+            
+            packet_size = 512  # or from row if available
+            protocol = row.get("protocol", "Unknown")
+            source_ip = row.get("src_ip", "0.0.0.0")
+            destination_ip = row.get("dst_ip", "0.0.0.0")
+
+            rca.add_record(
+                delay=delay_value,
+                packet_size=packet_size,
+                protocol=protocol,
+                source_ip=source_ip,
+                destination_ip=destination_ip
+            )
+    
+    report = rca.generate_report()
+    return report
