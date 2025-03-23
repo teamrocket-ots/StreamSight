@@ -80,6 +80,7 @@ def show_timeline_tab(df_delays, df_retrans):
         # Correlation heatmap between delays
         st.subheader("Delay Correlations")
         corr_columns = ["device_to_broker_delay", "broker_processing_delay", "cloud_upload_delay", "total_delay"]
+        
         corr_matrix = df_delays[corr_columns].corr()
         
         fig_corr = px.imshow(
