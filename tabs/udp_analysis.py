@@ -92,20 +92,6 @@ def show_udp_analysis_tab(df_udp):
             if not jitter_data.empty:
                 st.plotly_chart(hist_with_boundaries(jitter_data, "jitter", "UDP Jitter Distribution", color="orange"), use_container_width=True)
                 
-                # Show jitter by connection
-                if "conn_id" in jitter_data.columns:
-                    jitter_by_conn = jitter_data.groupby("conn_id")["jitter"].mean().reset_index()
-                    
-                    fig = px.bar(
-                        jitter_by_conn.sort_values("jitter", ascending=False),
-                        x="conn_id",
-                        y="jitter",
-                        title="Average Jitter by Connection",
-                        labels={"jitter": "Average Jitter (ms)", "conn_id": "Connection"}
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("No jitter measurements detected in the data.")
         else:
             st.warning("No Jitter data available.")
     
@@ -128,17 +114,6 @@ def show_udp_analysis_tab(df_udp):
                     st.plotly_chart(fig, use_container_width=True)
                 
                 # Show packet loss by connection
-                if "conn_id" in loss_data.columns:
-                    loss_by_conn = loss_data.groupby("conn_id")["possible_loss"].sum().reset_index()
-                    
-                    fig = px.bar(
-                        loss_by_conn.sort_values("possible_loss", ascending=False),
-                        x="conn_id",
-                        y="possible_loss",
-                        title="Total Estimated Packet Loss by Connection",
-                        labels={"possible_loss": "Estimated Lost Packets", "conn_id": "Connection"}
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No packet loss detected in the data.")
         else:
