@@ -486,12 +486,26 @@ def calculate_udp_metrics(udp_connections):
         std_ipd = np.std(ipds) if ipds else 0
         for i in range(2, len(packets)):
             if 'ipd' in packets[i] and 'ipd' in packets[i-1]:
-                packets[i]['jitter'] = abs(packets[i]['ipd'] - packets[i-1]['ipd'])
+                # Calculate the delta (difference in IPDs)
+                delta = abs(packets[i]['ipd'] - packets[i-1]['ipd'])
+                
+                # Initialize jitter for the first calculated packet
+                if i == 2:
+                    packets[i]['jitter'] = delta
+                else:
+                    # Apply RFC 3550 exponential moving average with 1/16 smoothing factor
+                    # J = J + (|D(i-1,i)|-J)/16
+                    prev_jitter = packets[i-1].get('jitter', 0)
+                    packets[i]['jitter'] = prev_jitter + (delta - prev_jitter) / 16
+                
+                # Keep the original packet loss detection logic
                 ipd_threshold = mean_ipd + 3 * std_ipd
                 if packets[i]['ipd'] > ipd_threshold:
                     packets[i]['possible_loss'] = np.ceil(packets[i]['ipd'] / mean_ipd) - 1 if mean_ipd > 0 else 0
                 else:
                     packets[i]['possible_loss'] = 0
+
+
         
         # Check for sequence numbers
         has_seq_nums = all(pkt.get('seq_num') is not None for pkt in packets)
