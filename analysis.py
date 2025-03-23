@@ -8,15 +8,15 @@ def compute_packet_loss(df_packets, df_retrans):
     if df_packets.empty:
         return 0.0
     
-    total_tcp = len(df_packets[df_packets["protocol"]=="TCP"])
-    if total_tcp == 0:
+    total = len(df_packets)
+    if total == 0:
         return 0.0
     
     # Count actual retransmissions
     retrans_count = len(df_retrans)
     
     # Calculate real packet loss percentage
-    return (retrans_count / total_tcp) * 100.0
+    return (retrans_count / total) * 100.0
 
 def detect_anomalies_in_delays(df_delays):
     """

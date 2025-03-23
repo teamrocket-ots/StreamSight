@@ -17,11 +17,10 @@ def show_overview_tab(df_packets, df_delays, df_retrans):
     avg_total_delay = df_delays["total_delay"].mean() if "total_delay" in df_delays.columns else 0
 
     # Display key metrics
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     col1.metric("Total Packets", f"{total_packets}")
     col2.metric("Avg E2E Delay", f"{avg_total_delay:.3f}s")
-    col3.metric("Anomalies Detected", f"{anomaly_count}")
-    col4.metric("Packet Loss %", f"{packet_loss_pct:.1f}%")
+    col3.metric("Packet Loss %", f"{packet_loss_pct:.3f}%")
 
     # Protocol distribution visualization
     st.subheader("Protocol Distribution")
