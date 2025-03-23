@@ -2,8 +2,45 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+def categorize_delays(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Categorize each delay type into Low, Normal, High, Very High.
+    Also sets a 'bottleneck' column to indicate which delay is highest.
+    """
+    delay_types = ["device_to_broker_delay", "broker_processing_delay", "cloud_upload_delay"]
+    categories = ["Low", "Normal", "High", "Very High"]
+    
+    for col in delay_types:
+        if col in df.columns:
+            df[f"{col}_category"] = pd.qcut(
+                df[col], 
+                q=[0, 0.25, 0.5, 0.75, 1.0],
+                labels=categories, 
+                duplicates="drop"
+            )
+    
+    if all(col in df.columns for col in delay_types):
+        df["bottleneck"] = df[delay_types].idxmax(axis=1)
+        df["bottleneck"] = df["bottleneck"].replace({
+            "device_to_broker_delay": "Device→Broker",
+            "broker_processing_delay": "Broker Processing",
+            "cloud_upload_delay": "Cloud Upload"
+        })
+    
+    return df
 
-def show_insights_tab(df_delays):
+def detect_anomalies_in_delays(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Flag anomalies in each delay column if it exceeds mean + 3 * std.
+    """
+    df["is_anomaly"] = False
+    for col in ["device_to_broker_delay", "broker_processing_delay", "cloud_upload_delay"]:
+        if col in df.columns:
+            threshold = df[col].mean() + 3 * df[col].std()
+            df.loc[df[col] > threshold, "is_anomaly"] = True
+    return df
+
+def show_insights_tab(df_delays: pd.DataFrame):
     """
     Display insights and categorization of delays
     """
@@ -18,39 +55,60 @@ def show_insights_tab(df_delays):
     Anomalies are highlighted for faster troubleshooting.
     """)
 
-    # Display thresholds for anomaly detection
+    # -------------------------------------------------------------------
+    # 1) Auto-categorize if needed columns missing
+    # -------------------------------------------------------------------
+    needed_bottleneck = "bottleneck" in df_delays.columns
+    needed_categories = all(
+        f"{col}_category" in df_delays.columns 
+        for col in ["device_to_broker_delay", "broker_processing_delay", "cloud_upload_delay"]
+    )
+    needed_anomalies = "is_anomaly" in df_delays.columns
+
+    if not needed_bottleneck or not needed_categories:
+        df_delays = categorize_delays(df_delays)
+    
+    if not needed_anomalies:
+        df_delays = detect_anomalies_in_delays(df_delays)
+
+    # -------------------------------------------------------------------
+    # 2) Threshold Calculation
+    # -------------------------------------------------------------------
     if "thresholds" not in st.session_state:
-        # If thresholds were not calculated, do it here (this should normally happen in analysis.py)
         st.session_state.thresholds = {}
         delay_types = ["device_to_broker_delay", "broker_processing_delay", 
-                      "cloud_upload_delay", "total_delay"]
+                       "cloud_upload_delay", "total_delay"]
         
         for col in delay_types:
             if col in df_delays.columns:
                 mean_val = df_delays[col].mean()
                 std_val = df_delays[col].std()
                 
-                # Different thresholds based on delay type
                 if col == "device_to_broker_delay":
-                    threshold_multiplier = 2.0  # More sensitive for local network
+                    threshold_multiplier = 2.0
                 elif col == "broker_processing_delay":
                     threshold_multiplier = 2.5
                 elif col == "cloud_upload_delay":
-                    threshold_multiplier = 3.0  # Less sensitive (more variable)
-                else:  # total_delay
+                    threshold_multiplier = 3.0
+                else:
                     threshold_multiplier = 2.0
                     
                 cutoff = mean_val + threshold_multiplier * std_val
                 st.session_state.thresholds[col] = cutoff
     
     st.subheader("Anomaly Detection Thresholds")
-    threshold_df = pd.DataFrame({
-        "Delay Type": list(st.session_state.thresholds.keys()),
-        "Threshold (s)": [f"{val:.3f}" for val in st.session_state.thresholds.values()]
-    })
-    st.table(threshold_df)
+    if "thresholds" in st.session_state and st.session_state.thresholds:
+        threshold_df = pd.DataFrame({
+            "Delay Type": list(st.session_state.thresholds.keys()),
+            "Threshold (s)": [f"{val:.3f}" for val in st.session_state.thresholds.values()]
+        })
+        st.table(threshold_df)
+    else:
+        st.info("No thresholds found.")
 
-    # Display bottleneck analysis 
+    # -------------------------------------------------------------------
+    # 3) Bottleneck Analysis (Fixed duplicate key)
+    # -------------------------------------------------------------------
     st.subheader("Bottleneck Analysis")
     if "bottleneck" in df_delays.columns:
         bottleneck_counts = df_delays["bottleneck"].value_counts().reset_index()
@@ -68,48 +126,27 @@ def show_insights_tab(df_delays):
                 "Cloud Upload": "#4CAF50"
             }
         )
-        st.plotly_chart(fig_bottleneck, use_container_width=True)
+        st.plotly_chart(fig_bottleneck, use_container_width=True, key="bottleneck_pie")
     else:
-        st.info("Bottleneck analysis not available. Run categorize_delays() first.")
-    
-    # Display delay categorization
-    st.subheader("Delay Categorization")
-    categories = ["Low", "Normal", "High", "Very High"]
-    delay_types = ["device_to_broker_delay", "broker_processing_delay", "cloud_upload_delay"]
-    
-    for delay_type in delay_types:
-        cat_col = f"{delay_type}_category"
-        if cat_col in df_delays.columns:
-            cat_counts = df_delays[cat_col].value_counts().reindex(categories).fillna(0).reset_index()
-            cat_counts.columns = ["Category", "Count"]
-            
-            st.write(f"**{delay_type.replace('_', ' ').title()}**")
-            fig_cat = px.bar(
-                cat_counts,
-                x="Category",
-                y="Count",
-                color="Category",
-                color_discrete_map={
-                    "Low": "green",
-                    "Normal": "blue",
-                    "High": "orange",
-                    "Very High": "red"
-                }
-            )
-            fig_cat.update_traces(marker_line_color='rgba(0,0,0,0.5)', marker_line_width=1)
-            st.plotly_chart(fig_cat, use_container_width=True)
-        else:
-            st.info(f"Categories for {delay_type} not available.")
-    
-    # Display anomalies
+        st.info("Bottleneck analysis not available.")
+
+    # -------------------------------------------------------------------
+    # 5) Anomaly Display
+    # -------------------------------------------------------------------
     st.subheader("Detected Anomalies")
     if "is_anomaly" in df_delays.columns:
-        anomalies = df_delays[df_delays["is_anomaly"] == True]
+        anomalies = df_delays[df_delays["is_anomaly"]]
         st.write(f"Number of anomaly messages: {len(anomalies)}")
         if not anomalies.empty:
-            st.dataframe(anomalies[["msg_id", "device_to_broker_delay", "broker_processing_delay", 
-                                    "cloud_upload_delay", "total_delay", "bottleneck"]])
+            st.dataframe(anomalies[[
+                "msg_id", 
+                "device_to_broker_delay", 
+                "broker_processing_delay", 
+                "cloud_upload_delay", 
+                "total_delay", 
+                "bottleneck"
+            ]], key="anomalies_table")  # Unique key for table
         else:
             st.info("No anomalies detected.")
     else:
-        st.info("Anomaly detection not available. Run detect_anomalies_in_delays() first.")
+        st.info("Anomaly detection not available.")
