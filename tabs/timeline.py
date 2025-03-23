@@ -19,7 +19,7 @@ def show_timeline_tab(df_delays, df_retrans):
         if 'device_publish_time' in df_delays_plot.columns:
             df_delays_plot["timestamp"] = pd.to_datetime(
                 df_delays_plot["device_publish_time"], 
-                unit='s'
+                unit='ms'
             )
         
         # Anomaly detection - calculate fresh threshold each time
@@ -38,9 +38,9 @@ def show_timeline_tab(df_delays, df_retrans):
             # Count anomalies and display to user
             anomaly_count = df_delays_plot['is_anomaly'].sum()
             if anomaly_count > 0:
-                st.warning(f"Found {anomaly_count} anomalies exceeding threshold of {threshold:.4f}s")
+                st.warning(f"Found {anomaly_count} anomalies exceeding threshold of {threshold:.4f}ms")
             else:
-                st.info(f"No anomalies found using threshold of {threshold:.4f}s")
+                st.info(f"No anomalies found using threshold of {threshold:.4f}ms")
 
         # Visualization parameters
         plot_params = {
@@ -50,7 +50,7 @@ def show_timeline_tab(df_delays, df_retrans):
             "size": "total_delay",
             "size_max": 15,
             "title": "Total Delay Over Time with Anomaly Detection",
-            "labels": {"total_delay": "Total Delay (s)"}
+            "labels": {"total_delay": "Total Delay (ms)"}
         }
 
         # Create a combined visualization that shows both bottlenecks and anomalies
@@ -110,37 +110,10 @@ def show_timeline_tab(df_delays, df_retrans):
                 y=st.session_state['calculated_threshold'],
                 line_dash="dot", 
                 line_color="red",
-                annotation_text=f"Anomaly Threshold ({st.session_state['calculated_threshold']:.4f}s)"
+                annotation_text=f"Anomaly Threshold ({st.session_state['calculated_threshold']:.4f}ms)"
             )
 
         st.plotly_chart(fig_timeline, use_container_width=True)
-
-        # Add threshold adjustment slider
-        if 'total_delay' in df_delays_plot.columns:
-            st.subheader("Adjust Anomaly Threshold")
-            
-            # Calculate min and max values for slider
-            min_delay = df_delays_plot['total_delay'].min()
-            max_delay = df_delays_plot['total_delay'].max()
-            
-            # Allow user to adjust threshold using the calculated value as default
-            user_threshold = st.slider(
-                "Threshold value (seconds)", 
-                min_value=float(min_delay),
-                max_value=float(max_delay),
-                value=float(st.session_state['calculated_threshold']),
-                step=0.001
-            )
-            
-            # Update anomaly count based on user threshold
-            anomaly_count = (df_delays_plot['total_delay'] > user_threshold).sum()
-            st.text(f"With threshold {user_threshold:.4f}s: {anomaly_count} anomalies would be detected")
-            
-            # Allow user to apply the new threshold
-            if st.button("Apply New Threshold"):
-                st.session_state['calculated_threshold'] = user_threshold
-                st.experimental_rerun()
-
         # Correlation matrix with safety checks
         st.subheader("Delay Correlations")
         corr_columns = [col for col in [
@@ -172,7 +145,7 @@ def show_timeline_tab(df_delays, df_retrans):
         if 'timestamp' in df_retrans_plot.columns:  # Updated column name
             df_retrans_plot["timestamp"] = pd.to_datetime(
                 df_retrans_plot["timestamp"], 
-                unit='s'
+                unit='ms'
             )
             
             fig_ret = px.scatter(

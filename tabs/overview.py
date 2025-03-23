@@ -19,7 +19,7 @@ def show_overview_tab(df_packets, df_delays, df_retrans):
     # Display key metrics
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Packets", f"{total_packets}")
-    col2.metric("Avg E2E Delay", f"{avg_total_delay:.3f}s")
+    col2.metric("Avg E2E Delay", f"{avg_total_delay:.3f}ms")
     col3.metric("Packet Loss %", f"{packet_loss_pct:.3f}%")
 
     # Protocol distribution visualization

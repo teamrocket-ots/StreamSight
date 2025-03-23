@@ -28,7 +28,7 @@ def show_mqtt_analysis_tab(df_mqtt):
         if "device_to_broker_delay" in df_mqtt.columns:
             d2b_data = df_mqtt[df_mqtt['device_to_broker_delay'].notna()]
             if not d2b_data.empty:
-                st.metric("Avg Device→Broker Delay", f"{d2b_data['device_to_broker_delay'].mean():.4f}s")
+                st.metric("Avg Device→Broker Delay", f"{d2b_data['device_to_broker_delay'].mean():.4f}ms")
         
         # Display detected clients and brokers
         if 'detected_clients' in stats and 'detected_brokers' in stats:
@@ -40,7 +40,7 @@ def show_mqtt_analysis_tab(df_mqtt):
         if "broker_processing_delay" in df_mqtt.columns:
             bp_data = df_mqtt[df_mqtt['broker_processing_delay'].notna()]
             if not bp_data.empty:
-                st.metric("Avg Broker Processing Delay", f"{bp_data['broker_processing_delay'].mean():.4f}s")
+                st.metric("Avg Broker Processing Delay", f"{bp_data['broker_processing_delay'].mean():.4f}ms")
     
     # with col3:
     #     if "cloud_upload_delay" in df_mqtt.columns:
@@ -99,7 +99,7 @@ def show_mqtt_analysis_tab(df_mqtt):
                         y="device_to_broker_delay",
                         color="msg_type_name" if "msg_type_name" in d2b_data.columns else None,
                         title="Client-Broker Delay Over Time",
-                        labels={"device_to_broker_delay": "Delay (s)", "timestamp": "Time"}
+                        labels={"device_to_broker_delay": "Delay (ms)", "timestamp": "Time"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 
@@ -144,7 +144,7 @@ def show_mqtt_analysis_tab(df_mqtt):
                         y="broker_processing_delay",
                         color="msg_type_name" if "msg_type_name" in bp_data.columns else None,
                         title="Broker Processing Delay Over Time",
-                        labels={"broker_processing_delay": "Delay (s)", "timestamp": "Time"}
+                        labels={"broker_processing_delay": "Delay (ms)", "timestamp": "Time"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
                 
@@ -157,7 +157,7 @@ def show_mqtt_analysis_tab(df_mqtt):
                         x="msg_type_name",
                         y="broker_processing_delay",
                         title="Average Broker Processing Delay by Message Type",
-                        labels={"broker_processing_delay": "Average Delay (s)", 
+                        labels={"broker_processing_delay": "Average Delay (ms)", 
                                 "msg_type_name": "Message Type"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
@@ -308,7 +308,7 @@ def show_mqtt_analysis_tab(df_mqtt):
             comm_columns = ['timestamp', 'src_ip', 'dst_ip', 'msg_type_name', 
                             'device_to_broker_delay', 'broker_processing_delay']
             comm_df = df_mqtt[comm_columns].copy()
-            comm_df['timestamp'] = pd.to_datetime(comm_df['timestamp'], unit='s')
+            comm_df['timestamp'] = pd.to_datetime(comm_df['timestamp'], unit='ms')
             comm_df['direction'] = np.where(
                 comm_df['src_ip'].isin(stats['detected_clients']),
                 'Client→Broker',
@@ -324,11 +324,11 @@ def show_mqtt_analysis_tab(df_mqtt):
                     "dst_ip": "Destination",
                     "msg_type_name": "Message Type",
                     "device_to_broker_delay": st.column_config.NumberColumn(
-                        "Client→Broker Delay (s)",
+                        "Client→Broker Delay (ms)",
                         format="%.4f"
                     ),
                     "broker_processing_delay": st.column_config.NumberColumn(
-                        "Processing Delay (s)",
+                        "Processing Delay (ms)",
                         format="%.4f"
                     )
                 },

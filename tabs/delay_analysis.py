@@ -31,28 +31,28 @@ def show_delay_analysis_tab(df_delays):
     with col1:
         if "device_to_broker_delay" in df_delays.columns:
             avg_dev = df_delays["device_to_broker_delay"].mean()
-            st.metric("Avg Device→Broker", f"{avg_dev:.3f}s")
+            st.metric("Avg Device→Broker", f"{avg_dev:.3f}ms")
         else:
             st.metric("Avg Device→Broker", "N/A")
     
     with col2:
         if "broker_processing_delay" in df_delays.columns:
             avg_broker = df_delays["broker_processing_delay"].mean()
-            st.metric("Avg Broker Proc", f"{avg_broker:.3f}s")
+            st.metric("Avg Broker Proc", f"{avg_broker:.3f}ms")
         else:
             st.metric("Avg Broker Proc", "N/A")
     
     with col3:
         if "cloud_upload_delay" in df_delays.columns:
             avg_cloud = df_delays["cloud_upload_delay"].mean()
-            st.metric("Avg Cloud Upload", f"{avg_cloud:.3f}s")
+            st.metric("Avg Cloud Upload", f"{avg_cloud:.3f}ms")
         else:
             st.metric("Avg Cloud Upload", "N/A")
     
     with col4:
         if "total_delay" in df_delays.columns:
             avg_total = df_delays["total_delay"].mean()
-            st.metric("Avg Total Delay", f"{avg_total:.3f}s")
+            st.metric("Avg Total Delay", f"{avg_total:.3f}ms")
         else:
             st.metric("Avg Total Delay", "N/A")
     

@@ -52,7 +52,7 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
             
             try:
                 # Convert epoch to datetime and set as index
-                retrans_over_time["time"] = pd.to_datetime(retrans_over_time["time"], unit='s')
+                retrans_over_time["time"] = pd.to_datetime(retrans_over_time["time"], unit='ms')
                 retrans_grouped = retrans_over_time.set_index("time")
                 retrans_grouped = retrans_grouped.resample("1s").sum()["count"].reset_index()
                 
@@ -84,7 +84,7 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
         
         if "timestamp" in tcp_packets.columns:
             # Convert epoch timestamp to datetime
-            tcp_packets["datetime"] = pd.to_datetime(tcp_packets["timestamp"], unit='s')
+            tcp_packets["datetime"] = pd.to_datetime(tcp_packets["timestamp"], unit='ms')
             
             try:
                 # Group by time intervals using datetime

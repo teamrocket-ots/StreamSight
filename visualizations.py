@@ -24,7 +24,7 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         x=xcol,
         nbins=bin_count,
         title=title,
-        labels={xcol: "Delay (s)"},
+        labels={xcol: "Delay (ms)"},
         color_discrete_sequence=[color]
     )
     
@@ -47,7 +47,7 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         line_width=2,
         line_dash="dash",
         line_color="red",
-        annotation_text=f"Mean: {mean_val:.3f}s",
+        annotation_text=f"Mean: {mean_val:.3f}ms",
         annotation_position="top right",
         annotation_font=dict(size=12)
     )
@@ -57,7 +57,7 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         line_width=2,
         line_dash="dot",
         line_color="green",
-        annotation_text=f"Median: {median_val:.3f}s",
+        annotation_text=f"Median: {median_val:.3f}ms",
         annotation_position="top left",
         annotation_font=dict(size=12)
     )
@@ -69,7 +69,7 @@ def hist_with_boundaries(df, xcol, title, color="royalblue"):
         fillcolor="rgba(0, 100, 80, 0.2)",
         opacity=0.4,
         line_width=0,
-        annotation_text=f"±1σ: {std_val:.3f}s",
+        annotation_text=f"±1σ: {std_val:.3f}ms",
         annotation_position="bottom right"
     )
     
@@ -111,7 +111,7 @@ def udp_jitter_plot(df_udp):
         hover_data=["timestamp", "conn_id"],
         title="UDP Jitter vs Packet Loss Analysis",
         labels={
-            "jitter": "Jitter (s)",
+            "jitter": "Jitter (ms)",
             "possible_loss": "Estimated Packet Loss",
             "payload_size": "Payload Size"
         }
@@ -180,7 +180,7 @@ def mqtt_delay_components(df_mqtt):
     fig.update_layout(
         title="MQTT Delay Components",
         xaxis_title="Delay Component",
-        yaxis_title="Time (s)",
+        yaxis_title="Time (ms)",
         barmode='group',
         bargap=0.15,
         bargroupgap=0.1
@@ -208,7 +208,7 @@ def connection_rtt_chart(df_tcp):
         title="Top 10 Connections by RTT",
         labels={
             'conn_id': 'Connection',
-            'rtt': 'RTT (s)'
+            'rtt': 'RTT (ms)'
         }
     )
     
@@ -231,7 +231,7 @@ def congestion_heatmap(df_udp):
         df_udp = df_udp.sample(500)
     
     # Group by timestamp (rounded to nearest second) and connection
-    df_udp['time_rounded'] = pd.to_datetime(df_udp['timestamp'], unit='s').dt.round('1s')
+    df_udp['time_rounded'] = pd.to_datetime(df_udp['timestamp'], unit='ms').dt.round('1s')
     
     # Get unique connections
     connections = df_udp['conn_id'].unique()

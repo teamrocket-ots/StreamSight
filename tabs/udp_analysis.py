@@ -27,7 +27,7 @@ def show_udp_analysis_tab(df_udp):
         if "ipd" in df_udp.columns:
             ipd_data = df_udp[df_udp['ipd'].notna()]
             if not ipd_data.empty:
-                st.metric("Average Inter-Packet Delay", f"{ipd_data['ipd'].mean():.4f}s")
+                st.metric("Average Inter-Packet Delay", f"{ipd_data['ipd'].mean():.4f}ms")
         
         # Estimated packet loss
         if conn_stats:
@@ -41,8 +41,8 @@ def show_udp_analysis_tab(df_udp):
         if "jitter" in df_udp.columns:
             jitter_data = df_udp[df_udp['jitter'].notna()]
             if not jitter_data.empty:
-                st.metric("Average Jitter", f"{jitter_data['jitter'].mean():.4f}s")
-                st.metric("Max Jitter", f"{jitter_data['jitter'].max():.4f}s")
+                st.metric("Average Jitter", f"{jitter_data['jitter'].mean():.4f}ms")
+                st.metric("Max Jitter", f"{jitter_data['jitter'].max():.4f}ms")
     
     with col3:
         if "congestion_score" in df_udp.columns:
@@ -77,7 +77,7 @@ def show_udp_analysis_tab(df_udp):
                         y="ipd",
                         color="conn_id" if len(ipd_data["conn_id"].unique()) < 10 else None,
                         title="Inter-Packet Delay Over Time",
-                        labels={"ipd": "Inter-Packet Delay (s)", "timestamp": "Time"}
+                        labels={"ipd": "Inter-Packet Delay (ms)", "timestamp": "Time"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
             else:
@@ -101,7 +101,7 @@ def show_udp_analysis_tab(df_udp):
                         x="conn_id",
                         y="jitter",
                         title="Average Jitter by Connection",
-                        labels={"jitter": "Average Jitter (s)", "conn_id": "Connection"}
+                        labels={"jitter": "Average Jitter (ms)", "conn_id": "Connection"}
                     )
                     st.plotly_chart(fig, use_container_width=True)
             else:
