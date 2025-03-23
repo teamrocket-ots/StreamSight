@@ -189,7 +189,7 @@ def analyze_udp_delays(df_udp):
         
         df_udp['jitter_category'] = pd.cut(
             df_udp['jitter'],
-            bins=sorted([0, mean_jitter, mean_jitter + std_jitter, float('inf')]),
+            bins=[0, mean_jitter, mean_jitter + std_jitter, float('inf')],
             labels=['Low', 'Medium', 'High']
         )
     
@@ -211,10 +211,14 @@ def analyze_mqtt_delays(df_mqtt):
     - Cloud Delay
     """
     if df_mqtt.empty:
-        return df_mqtt
+        return df_mqtt, {}
     
     # Identify entities (Client, Broker, Cloud)
     entity_counts = df_mqtt.groupby('entity').size().to_dict()
+    
+    # Extract unique clients and brokers
+    detected_clients = set(df_mqtt[df_mqtt['entity'] == 'CLIENT']['src_ip'].unique())
+    detected_brokers = set(df_mqtt[df_mqtt['entity'] == 'BROKER']['src_ip'].unique())
     
     # Calculate statistics for each message type
     msg_type_stats = df_mqtt.groupby('msg_type_name').size().to_dict()
@@ -228,9 +232,16 @@ def analyze_mqtt_delays(df_mqtt):
             mean = df_mqtt[delay_type].mean()
             std = df_mqtt[delay_type].std()
             
+            # Define bin edges
+            bin_edges = [0, mean - 0.5 * std, mean + 0.5 * std, mean + 2 * std, float('inf')]
+            
+            # Ensure bins are monotonically increasing
+            bin_edges = sorted(set(bin_edges))  # Remove duplicates and sort
+            
+            # Apply pd.cut() with sorted bins
             df_mqtt[f'{delay_type}_category'] = pd.cut(
                 df_mqtt[delay_type],
-                bins=sorted([0, mean-0.5*std, mean+0.5*std, mean+2*std, float('inf')]),
+                bins=bin_edges,
                 labels=['Low', 'Normal', 'High', 'Very High']
             )
     
@@ -251,9 +262,14 @@ def analyze_mqtt_delays(df_mqtt):
     # Collect overall statistics
     stats = {
         'entity_counts': entity_counts,
-        'msg_type_stats': msg_type_stats
+        'msg_type_stats': msg_type_stats,
+        'detected_clients': list(detected_clients),  # Convert set to list for JSON serialization
+        'detected_brokers': list(detected_brokers),  # Convert set to list for JSON serialization
+        'total_clients': len(detected_clients),
+        'total_brokers': len(detected_brokers)
     }
     
+    # Add delay statistics
     for delay_type in delay_types:
         if delay_type in df_mqtt.columns:
             stats[f'{delay_type}_mean'] = df_mqtt[delay_type].mean()

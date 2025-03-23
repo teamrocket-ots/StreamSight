@@ -151,64 +151,63 @@ def parse_pcap(file_path):
             # For TCP packets on port 8883 that are not marked as MQTT by PyShark
             elif hasattr(packet, 'tcp') and (src_port == 8883 or dst_port == 8883):
                 protocol = "MQTT"
-                # Use TCP stream ID as a surrogate message ID
+                
+                # Get TCP stream ID as message identifier
                 try:
-                    msg_id = str(getattr(packet.tcp, 'stream', None))
-                except:
-                    msg_id = f'8883_{timestamp}'
-                    
-                if msg_id is None:
-                    msg_id = f'8883_{timestamp}'
+                    msg_id = str(packet.tcp.stream)
+                except AttributeError:
+                    msg_id = f'8883_{timestamp}'  # Fallback ID
+                
                 mqtt_messages.setdefault(msg_id, {})
                 
-                # Determine client and broker based on port direction
+                # Identify broker/client based on port direction
                 if src_port == 8883:
                     broker_ip = src_ip
                     client_ip = dst_ip
-                elif dst_port == 8883:
+                else:
                     broker_ip = dst_ip
                     client_ip = src_ip
                 
-                if broker_ip:
-                    brokers.add(broker_ip)
-                if client_ip:
-                    clients.add(client_ip)
+                # Track broker/client IPs
+                brokers.add(broker_ip)
+                clients.add(client_ip)
                 
-                # Heuristic for delay timings on port 8883:
-                if dst_port == 8883:
+                # Calculate message timing metrics
+                if dst_port == 8883:  # Client -> Broker
                     if 'client_publish_time' not in mqtt_messages[msg_id]:
                         mqtt_messages[msg_id]['client_publish_time'] = timestamp
                     else:
-                        if 'broker_forward_time' not in mqtt_messages[msg_id]:
-                            mqtt_messages[msg_id]['broker_forward_time'] = timestamp
-                elif src_port == 8883:
+                        mqtt_messages[msg_id]['broker_forward_time'] = timestamp
+                else:  # Broker -> Client
                     if 'broker_ack_time' not in mqtt_messages[msg_id]:
                         mqtt_messages[msg_id]['broker_ack_time'] = timestamp
                     else:
-                        if 'cloud_ack_time' not in mqtt_messages[msg_id]:
-                            mqtt_messages[msg_id]['cloud_ack_time'] = timestamp
+                        mqtt_messages[msg_id]['cloud_ack_time'] = timestamp
                 
-                # Build a basic MQTT info record for these packets
+                # Determine entity role
+                entity = 'BROKER' if src_ip == broker_ip else 'CLIENT'
+                
+                # Build connection info
                 mqtt_info = {
                     **packet_info,
                     'src_port': src_port,
                     'dst_port': dst_port,
                     'msg_id': msg_id,
-                    'msg_type': None,
-                    'msg_type_name': None,
-                    'conn_id': f"{src_ip}:{src_port}-{dst_ip}:{dst_port}" if src_ip and dst_ip and src_port and dst_port else f"mqtt_{packet_id}",
-                    'entity': 'UNKNOWN'
+                    'msg_type': None, 
+                    'msg_type_name': "UNKNOWN",#, Could parse actual MQTT control packet type here
+                    'conn_id': f"{src_ip}:{src_port}-{dst_ip}:{dst_port}",
+                    'entity': entity,
+                    'is_retrans': False
                 }
+                
                 mqtt_connections[mqtt_info['conn_id']].append(mqtt_info)
-
-                is_retrans = False
-                if hasattr(packet.tcp, 'analysis_retransmission') or hasattr(packet.tcp, 'analysis_fast_retransmission'):
-                    print("Retransmission detected in MQTT-over-TCP packet")
+                
+                # Detect retransmissions
+                if hasattr(packet.tcp, 'analysis_retransmission'):
+                    mqtt_info['is_retrans'] = True
                     retrans_times.append(timestamp)
-                    is_retrans = True
-                mqtt_info['is_retrans'] = is_retrans
-
-            
+                
+                
             # Process plain TCP packets (excluding the 8883 MQTT branch)
             elif hasattr(packet, 'tcp'):
                 protocol = "TCP"

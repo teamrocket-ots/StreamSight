@@ -30,34 +30,31 @@ def show_mqtt_analysis_tab(df_mqtt):
             if not d2b_data.empty:
                 st.metric("Avg Device→Broker Delay", f"{d2b_data['device_to_broker_delay'].mean():.4f}s")
         
-        # Entity counts
-        if 'entity_counts' in stats:
-            st.write("Entity Counts:")
-            for entity, count in stats['entity_counts'].items():
-                st.write(f"- {entity}: {count}")
+        # Display detected clients and brokers
+        if 'detected_clients' in stats and 'detected_brokers' in stats:
+            st.write("Detected Clients and Brokers:")
+            
+            # Display clients
+            st.write(f"- Total Unique Clients: {stats['total_clients']}")
+            for client in stats['detected_clients']:
+                st.write(f"  - {client}")
+            
+            # Display brokers
+            st.write(f"- Total Unique Brokers: {stats['total_brokers']}")
+            for broker in stats['detected_brokers']:
+                st.write(f"  - {broker}")
     
     with col2:
         if "broker_processing_delay" in df_mqtt.columns:
             bp_data = df_mqtt[df_mqtt['broker_processing_delay'].notna()]
             if not bp_data.empty:
-                st.metric("Avg Broker Processing", f"{bp_data['broker_processing_delay'].mean():.4f}s")
-        
-        # Message type stats
-        if 'msg_type_stats' in stats:
-            st.write("Message Types:")
-            for msg_type, count in list(stats['msg_type_stats'].items())[:3]:  # Show top 3
-                st.write(f"- {msg_type}: {count}")
+                st.metric("Avg Broker Processing Delay", f"{bp_data['broker_processing_delay'].mean():.4f}s")
     
     with col3:
         if "cloud_upload_delay" in df_mqtt.columns:
-            cloud_data = df_mqtt[df_mqtt['cloud_upload_delay'].notna()]
-            if not cloud_data.empty:
-                st.metric("Avg Cloud Upload Delay", f"{cloud_data['cloud_upload_delay'].mean():.4f}s")
-        
-        if "total_delay" in df_mqtt.columns:
-            total_data = df_mqtt[df_mqtt['total_delay'].notna()]
-            if not total_data.empty:
-                st.metric("Avg Total Delay", f"{total_data['total_delay'].mean():.4f}s")
+            cu_data = df_mqtt[df_mqtt['cloud_upload_delay'].notna()]
+            if not cu_data.empty:
+                st.metric("Avg Cloud Upload Delay", f"{cu_data['cloud_upload_delay'].mean():.4f}s")
     
     # Create tabs for different analyses
     mqtt_tabs = st.tabs([
