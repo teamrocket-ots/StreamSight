@@ -1,193 +1,228 @@
 import streamlit as st
-import plotly.express as px
-import plotly.graph_objects as go
+from visualizations import hist_with_boundaries
 import pandas as pd
-import numpy as np
 
-from visualizations import hist_with_boundaries, udp_jitter_plot, congestion_heatmap
-from analysis import analyze_udp_delays
 
-def show_udp_analysis_tab(df_udp):
-    """Display UDP-specific analysis and visualizations"""
-    st.header("UDP Delay Analysis")
+def show_delay_analysis_tab(df_delays):
+    """Display delay analysis visualizations"""
+    st.header("MQTT Delay Analysis")
     
-    if df_udp.empty:
-        st.warning("No UDP data available in the uploaded PCAP file.")
-        return
+    # Check what columns are available
+    available_columns = set(df_delays.columns)
+    required_columns = {
+        "device_to_broker_delay", 
+        "broker_processing_delay", 
+        "cloud_upload_delay", 
+        "total_delay"
+    }
+    missing_columns = required_columns - available_columns
     
-    try:
-        # Process data for analysis
-        df_udp, conn_stats = analyze_udp_delays(df_udp)
-    except Exception as e:
-        st.error(f"Error analyzing UDP data: {str(e)}")
-        return
-
-    # Overview metrics
-    st.subheader("UDP Performance Overview")
+    if missing_columns:
+        st.warning(f"Some delay metrics are missing: {', '.join(missing_columns)}")
+        
+        # If your PCAP doesn't have MQTT data, show this message
+        if len(missing_columns) == len(required_columns):
+            st.error("No MQTT delay data found in the PCAP file. Try uploading a file with MQTT traffic.")
+            return
     
-    col1, col2, col3 = st.columns(3)
+    # Display metrics in a row
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        if "ipd" in df_udp.columns:
-            ipd_data = df_udp[df_udp['ipd'].notna()]
-            if not ipd_data.empty:
-                st.metric("Average Inter-Packet Delay", f"{ipd_data['ipd'].mean():.4f}s")
-        
-        # Estimated packet loss
-        if conn_stats:
-            try:
-                total_loss = sum(stats.get('possible_loss_sum', 0) for stats in conn_stats.values())
-                total_packets = sum(stats.get('total_packets', 0) for stats in conn_stats.values())
-                if total_packets > 0:
-                    loss_pct = (total_loss / (total_packets + total_loss)) * 100
-                    st.metric("Estimated Packet Loss", f"{loss_pct:.2f}%")
-            except Exception as e:
-                st.warning(f"Couldn't calculate packet loss: {str(e)}")
+        if "device_to_broker_delay" in df_delays.columns:
+            avg_dev = df_delays["device_to_broker_delay"].mean()
+            st.metric("Avg Device→Broker", f"{avg_dev:.3f}s")
+        else:
+            st.metric("Avg Device→Broker", "N/A")
     
     with col2:
-        if "jitter" in df_udp.columns:
-            jitter_data = df_udp[df_udp['jitter'].notna()]
-            if not jitter_data.empty:
-                st.metric("Average Jitter", f"{jitter_data['jitter'].mean():.4f}s")
-                st.metric("Max Jitter", f"{jitter_data['jitter'].max():.4f}s")
+        if "broker_processing_delay" in df_delays.columns:
+            avg_broker = df_delays["broker_processing_delay"].mean()
+            st.metric("Avg Broker Proc", f"{avg_broker:.3f}s")
+        else:
+            st.metric("Avg Broker Proc", "N/A")
     
     with col3:
-        if "congestion_score" in df_udp.columns:
-            congestion_data = df_udp[df_udp['congestion_score'].notna()]
-            if not congestion_data.empty:
-                st.metric("Average Congestion Score", f"{congestion_data['congestion_score'].mean():.4f}")
-        
-        # Total connections
-        if "conn_id" in df_udp.columns:
-            st.metric("Total UDP Connections", f"{len(df_udp['conn_id'].unique())}")
-
-    # Create tabs for different analyses
-    udp_tabs = st.tabs([
-        "Inter-Packet Delay", 
-        "Jitter Analysis", 
-        "Packet Loss", 
-        "Congestion Analysis"
+        if "cloud_upload_delay" in df_delays.columns:
+            avg_cloud = df_delays["cloud_upload_delay"].mean()
+            st.metric("Avg Cloud Upload", f"{avg_cloud:.3f}s")
+        else:
+            st.metric("Avg Cloud Upload", "N/A")
+    
+    with col4:
+        if "total_delay" in df_delays.columns:
+            avg_total = df_delays["total_delay"].mean()
+            st.metric("Avg Total Delay", f"{avg_total:.3f}s")
+        else:
+            st.metric("Avg Total Delay", "N/A")
+    
+    # Create tabs for different delay analyses
+    delay_tabs = st.tabs([
+        "Device→Broker Delay",
+        "Broker Processing Delay",
+        "Cloud Upload Delay",
+        "Total Delay",
+        "Anomalies"
     ])
     
-    # Helper function for safe figure display
-    def safe_display(fig_func, *args, **kwargs):
-        try:
-            fig = fig_func(*args, **kwargs)
+    # Device to Broker delay histogram
+    with delay_tabs[0]:
+        st.subheader("Device to Broker Delay Analysis")
+        if "device_to_broker_delay" in df_delays.columns:
+            fig = hist_with_boundaries(df_delays, "device_to_broker_delay", 
+                                     "Device to Broker Delay Distribution", color="blue")
             st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Couldn't generate visualization: {str(e)}")
-
-    with udp_tabs[0]:
-        st.subheader("Inter-Packet Delay (IPD) Analysis")
-        if "ipd" in df_udp.columns:
-            ipd_data = df_udp[df_udp['ipd'].notna()]
-            if not ipd_data.empty:
-                safe_display(hist_with_boundaries, ipd_data, "ipd", "UDP Inter-Packet Delay Distribution", "green")
+            
+            if "device_to_broker_delay_category" in df_delays.columns:
+                # Show categories
+                category_counts = df_delays["device_to_broker_delay_category"].value_counts().reset_index()
+                category_counts.columns = ["Category", "Count"]
                 
-                if "timestamp" in df_udp.columns:
-                    try:
-                        fig = px.scatter(
-                            ipd_data,
-                            x="timestamp",
-                            y="ipd",
-                            color="conn_id" if len(ipd_data["conn_id"].unique()) < 10 else None,
-                            title="Inter-Packet Delay Over Time",
-                            labels={"ipd": "Delay (s)", "timestamp": "Time"}
-                        )
-                        safe_display(lambda: fig)
-                    except Exception as e:
-                        st.warning(f"Couldn't create time series: {str(e)}")
+                fig = px.pie(
+                    category_counts, 
+                    values="Count", 
+                    names="Category",
+                    title="Device to Broker Delay Categories",
+                    color="Category",
+                    color_discrete_map={
+                        "Low": "green",
+                        "Normal": "blue",
+                        "High": "orange",
+                        "Very High": "red"
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("No Inter-Packet Delay data available.")
-
-    with udp_tabs[1]:
-        st.subheader("Jitter Analysis")
-        if "jitter" in df_udp.columns:
-            jitter_data = df_udp[df_udp['jitter'].notna()]
-            if not jitter_data.empty:
-                safe_display(hist_with_boundaries, jitter_data, "jitter", "UDP Jitter Distribution", "orange")
+            st.warning("Device to Broker delay data not available.")
+    
+    # Broker Processing delay histogram
+    with delay_tabs[1]:
+        st.subheader("Broker Processing Delay Analysis")
+        if "broker_processing_delay" in df_delays.columns:
+            fig = hist_with_boundaries(df_delays, "broker_processing_delay", 
+                                     "Broker Processing Delay Distribution", color="green")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            if "broker_processing_delay_category" in df_delays.columns:
+                # Show categories
+                category_counts = df_delays["broker_processing_delay_category"].value_counts().reset_index()
+                category_counts.columns = ["Category", "Count"]
                 
-                if "conn_id" in jitter_data.columns:
-                    try:
-                        jitter_by_conn = jitter_data.groupby("conn_id")["jitter"].mean().reset_index()
-                        fig = px.bar(
-                            jitter_by_conn.sort_values("jitter", ascending=False),
-                            x="conn_id",
-                            y="jitter",
-                            title="Average Jitter by Connection",
-                            labels={"jitter": "Jitter (s)", "conn_id": "Connection"}
-                        )
-                        safe_display(lambda: fig)
-                    except Exception as e:
-                        st.warning(f"Couldn't create connection jitter plot: {str(e)}")
+                fig = px.pie(
+                    category_counts, 
+                    values="Count", 
+                    names="Category",
+                    title="Broker Processing Delay Categories",
+                    color="Category",
+                    color_discrete_map={
+                        "Low": "green",
+                        "Normal": "blue",
+                        "High": "orange",
+                        "Very High": "red"
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("No Jitter data available.")
-
-    with udp_tabs[2]:
-        st.subheader("Packet Loss Analysis")
-        if "possible_loss" in df_udp.columns:
-            loss_data = df_udp[df_udp['possible_loss'] > 0]
-            if not loss_data.empty:
-                if "timestamp" in loss_data.columns:
-                    try:
-                        fig = px.scatter(
-                            loss_data,
-                            x="timestamp",
-                            y="possible_loss",
-                            size="possible_loss",
-                            color="conn_id" if len(loss_data["conn_id"].unique()) < 10 else None,
-                            title="Estimated Packet Loss Events",
-                            labels={"possible_loss": "Lost Packets", "timestamp": "Time"}
-                        )
-                        safe_display(lambda: fig)
-                    except Exception as e:
-                        st.warning(f"Couldn't create loss timeline: {str(e)}")
+            st.warning("Broker Processing delay data not available.")
+    
+    # Cloud Upload delay histogram
+    with delay_tabs[2]:
+        st.subheader("Cloud Upload Delay Analysis")
+        if "cloud_upload_delay" in df_delays.columns:
+            fig = hist_with_boundaries(df_delays, "cloud_upload_delay", 
+                                     "Cloud Upload Delay Distribution", color="red")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            if "cloud_upload_delay_category" in df_delays.columns:
+                # Show categories
+                category_counts = df_delays["cloud_upload_delay_category"].value_counts().reset_index()
+                category_counts.columns = ["Category", "Count"]
                 
-                if "conn_id" in loss_data.columns:
-                    try:
-                        loss_by_conn = loss_data.groupby("conn_id")["possible_loss"].sum().reset_index()
-                        fig = px.bar(
-                            loss_by_conn.sort_values("possible_loss", ascending=False),
-                            x="conn_id",
-                            y="possible_loss",
-                            title="Total Packet Loss by Connection",
-                            labels={"possible_loss": "Lost Packets", "conn_id": "Connection"}
-                        )
-                        safe_display(lambda: fig)
-                    except Exception as e:
-                        st.warning(f"Couldn't create loss by connection plot: {str(e)}")
+                fig = px.pie(
+                    category_counts, 
+                    values="Count", 
+                    names="Category",
+                    title="Cloud Upload Delay Categories",
+                    color="Category",
+                    color_discrete_map={
+                        "Low": "green",
+                        "Normal": "blue",
+                        "High": "orange",
+                        "Very High": "red"
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Cloud Upload delay data not available.")
+    
+    # Total delay histogram
+    with delay_tabs[3]:
+        st.subheader("Total Delay Analysis")
+        if "total_delay" in df_delays.columns:
+            fig = hist_with_boundaries(df_delays, "total_delay", 
+                                     "Total Delay Distribution", color="purple")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Show bottleneck if available
+            if "bottleneck" in df_delays.columns:
+                bottleneck_counts = df_delays["bottleneck"].value_counts().reset_index()
+                bottleneck_counts.columns = ["Bottleneck", "Count"]
+                
+                fig = px.pie(
+                    bottleneck_counts, 
+                    values="Count", 
+                    names="Bottleneck",
+                    title="Delay Bottleneck Distribution",
+                    color="Bottleneck",
+                    color_discrete_map={
+                        "Device→Broker": "blue",
+                        "Broker Processing": "green",
+                        "Cloud Upload": "red"
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("Total delay data not available.")
+    
+    # Anomalies tab
+    with delay_tabs[4]:
+        st.subheader("Delay Anomalies")
+        if "is_anomaly" in df_delays.columns:
+            # Count anomalies
+            anomaly_count = df_delays["is_anomaly"].sum()
+            total_count = len(df_delays)
+            anomaly_pct = (anomaly_count / total_count) * 100 if total_count > 0 else 0
+            
+            st.metric("Anomalies Detected", f"{anomaly_count} ({anomaly_pct:.1f}%)")
+            
+            # Show anomalous records
+            if anomaly_count > 0:
+                st.subheader("Anomalous Delay Records")
+                st.dataframe(df_delays[df_delays["is_anomaly"] == True])
+                
+                # Show anomaly breakdown by component
+                anomaly_by_component = {}
+                for col in ["device_to_broker_delay_anomaly", "broker_processing_delay_anomaly", 
+                           "cloud_upload_delay_anomaly", "total_delay_anomaly"]:
+                    if col in df_delays.columns:
+                        component = col.replace("_anomaly", "").replace("_", " ").title()
+                        anomaly_by_component[component] = df_delays[col].sum()
+                
+                if anomaly_by_component:
+                    anomaly_df = pd.DataFrame({
+                        "Component": list(anomaly_by_component.keys()),
+                        "Anomaly Count": list(anomaly_by_component.values())
+                    })
+                    
+                    fig = px.bar(
+                        anomaly_df,
+                        x="Component",
+                        y="Anomaly Count",
+                        title="Anomalies by Component",
+                        color="Component"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("No packet loss detected.")
+                st.info("No anomalies detected in the delay data.")
         else:
-            st.warning("No Packet Loss data available.")
-
-    with udp_tabs[3]:
-        st.subheader("Congestion Analysis")
-        if "congestion_score" in df_udp.columns:
-            congestion_data = df_udp[df_udp['congestion_score'].notna()]
-            if not congestion_data.empty:
-                safe_display(udp_jitter_plot, df_udp)
-                safe_display(congestion_heatmap, df_udp)
-                
-                if "congestion_level" in df_udp.columns:
-                    try:
-                        congestion_counts = df_udp["congestion_level"].value_counts().reset_index()
-                        congestion_counts.columns = ["Level", "Count"]
-                        fig = px.pie(
-                            congestion_counts,
-                            values="Count",
-                            names="Level",
-                            title="Congestion Level Distribution",
-                            color="Level",
-                            color_discrete_map={
-                                "Low": "green",
-                                "Medium": "yellow",
-                                "High": "orange",
-                                "Very High": "red"
-                            }
-                        )
-                        safe_display(lambda: fig)
-                    except Exception as e:
-                        st.warning(f"Couldn't create congestion pie chart: {str(e)}")
-        else:
-            st.warning("No Congestion data available.")
+            st.warning("Anomaly detection data not available.")
