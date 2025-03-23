@@ -189,7 +189,7 @@ def analyze_udp_delays(df_udp):
         
         df_udp['jitter_category'] = pd.cut(
             df_udp['jitter'],
-            bins=[0, mean_jitter, mean_jitter + std_jitter, float('inf')],
+            bins=sorted([0, mean_jitter, mean_jitter + std_jitter, float('inf')]),
             labels=['Low', 'Medium', 'High']
         )
     
@@ -230,7 +230,7 @@ def analyze_mqtt_delays(df_mqtt):
             
             df_mqtt[f'{delay_type}_category'] = pd.cut(
                 df_mqtt[delay_type],
-                bins=[0, mean-0.5*std, mean+0.5*std, mean+2*std, float('inf')],
+                bins=sorted([0, mean-0.5*std, mean+0.5*std, mean+2*std, float('inf')]),
                 labels=['Low', 'Normal', 'High', 'Very High']
             )
     
