@@ -57,7 +57,6 @@ def main():
     "TCP Analysis",
     "UDP Analysis",  # Was missing in original
     "MQTT Analysis",  # Was missing in original
-    "Insights & Categorization",
     "Timeline Analysis",
     "Search & Filter",
     "Data Explorer"
@@ -77,15 +76,12 @@ def main():
         show_mqtt_analysis_tab(df_mqtt)
     
     with tabs[4]:
-        show_insights_tab(df_delays)
-    
-    with tabs[5]:
         show_timeline_tab(df_delays, df_retrans)
     
-    with tabs[6]:
+    with tabs[5]:
         show_search_tab(df_packets, df_delays)
     
-    with tabs[7]:
+    with tabs[6]:
         show_explorer_tab(df_packets, df_delays, df_retrans)
 
 if __name__ == "__main__":
