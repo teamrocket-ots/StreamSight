@@ -32,6 +32,7 @@ StreamSight analyzes network traffic captured in `.pcapng` files, focusing on id
 - Protocol-specific performance metrics
 - Timeline analysis and packet exploration
 - Synthetic data generation for testing
+- Root cause Analysis
 
 ## Installation
 
@@ -78,6 +79,7 @@ graph TD
     E --> G
     F --> G
     G --> H[Visualization Engine]
+    H --> I Root Cause Analysis
 ```
 
 ### MQTT Analysis Implementation
@@ -152,6 +154,7 @@ StreamSight/
 ├── analysis.py            # Timeline categorization
 ├── requirements.txt       # Python dependencies
 ├── proposal.pdf           # Initial project design
+├── rootcause_analysis.py  # Performs the root cause analysis
 └── tabs/                  # UI components
     ├── overview.py        # Project summary
     ├── delay_analysis.py  # Cross-protocol metrics
@@ -160,7 +163,8 @@ StreamSight/
     ├── udp_analysis.py    # UDP traffic analysis
     ├── timeline.py        # Chronological view
     ├── explorer.py        # Packet inspection
-    └── search.py          # Filtering interface
+    ├── search.py          # Filtering interface
+    └── rootcause_tab.py   # A helper tab file for displaying root cause analysis  
 ```
 
 ## Testing Methodology
