@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from visualizations import hist_with_boundaries
+from analysis import analyze_tcp_delays, categorize_delays
 
 def show_tcp_analysis_tab(df_packets, df_retrans):
     """Display TCP-specific analysis and visualizations using general packet data"""
@@ -39,7 +40,7 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
     tcp_tabs = st.tabs([
         "Retransmission Analysis", 
         "TCP Flow", 
-        "TCP Connections"
+        "TCP Connections",
     ])
     
     with tcp_tabs[0]:
@@ -77,28 +78,34 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
         else:
             st.info("No retransmissions detected in the data.")
     
+    # In tcp_analysis.py, modify the TCP Flow Analysis section:
     with tcp_tabs[1]:
         st.subheader("TCP Flow Analysis")
         
         if "timestamp" in tcp_packets.columns:
-            # Analyze packet flow over time
-            tcp_packets["packet_size"] = 1  # Placeholder for packet size
+            # Convert epoch timestamp to datetime
+            tcp_packets["datetime"] = pd.to_datetime(tcp_packets["timestamp"], unit='s')
             
             try:
-                # Group by time intervals
-                tcp_flow = tcp_packets.set_index("timestamp")
-                tcp_flow = tcp_flow.resample("1s").sum()["packet_size"].reset_index()
+                # Group by time intervals using datetime
+                tcp_flow = tcp_packets.set_index("datetime")
+                tcp_flow = tcp_flow.resample("1s").size().reset_index(name="packet_count")
                 
                 fig = px.area(
                     tcp_flow,
-                    x="timestamp",
-                    y="packet_size",
+                    x="datetime",
+                    y="packet_count",
                     title="TCP Traffic Flow",
-                    labels={"packet_size": "Packet Count", "timestamp": "Time"}
+                    labels={"packet_count": "Packet Count", "datetime": "Time"}
+                )
+                # Improve time axis formatting
+                fig.update_xaxes(
+                    tickformat="%H:%M:%S",
+                    rangeslider_visible=True
                 )
                 st.plotly_chart(fig, use_container_width=True)
-            except:
-                st.error("Could not create TCP flow chart. Check data format.")
+            except Exception as e:
+                st.error(f"Error creating flow chart: {str(e)}")
         else:
             st.warning("Timestamp data not available for TCP flow analysis.")
     

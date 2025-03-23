@@ -239,7 +239,7 @@ def parse_pcap(file_path):
                 
                 is_retrans = False
                 if hasattr(packet.tcp, 'analysis_retransmission') or hasattr(packet.tcp, 'analysis_fast_retransmission'):
-                    print("Retransmission detected")
+                    # print("Retransmission detected")
                     retrans_times.append(timestamp)
                     is_retrans = True
                 
