@@ -50,7 +50,8 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
             retrans_over_time["count"] = 1
             
             try:
-                # Group by time (rounded to seconds)
+                # Convert epoch to datetime and set as index
+                retrans_over_time["time"] = pd.to_datetime(retrans_over_time["time"], unit='s')
                 retrans_grouped = retrans_over_time.set_index("time")
                 retrans_grouped = retrans_grouped.resample("1s").sum()["count"].reset_index()
                 
@@ -61,9 +62,14 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
                     title="Retransmissions Over Time",
                     labels={"count": "Number of Retransmissions", "time": "Time"}
                 )
+                # Format datetime axis properly
+                fig.update_xaxes(
+                    tickformat="%H:%M:%S",
+                    rangeslider_visible=True
+                )
                 st.plotly_chart(fig, use_container_width=True)
-            except:
-                st.error("Could not create retransmission timeline. Check data format.")
+            except Exception as e:
+                st.error(f"Error creating timeline: {str(e)}")
                 
             # Display raw retransmission data
             st.subheader("Retransmission Events")

@@ -29,7 +29,7 @@ def parse_pcap(file_path):
     
     # Open the pcap file with a display filter for efficiency
     cap = pyshark.FileCapture(file_path, display_filter="mqtt or tcp or udp", 
-                              eventloop=loop, use_json=True)
+                              eventloop=loop)
     
     # Initialize data structures for overall packet data and protocol-specific tracking
     packet_records = []
@@ -200,6 +200,14 @@ def parse_pcap(file_path):
                     'entity': 'UNKNOWN'
                 }
                 mqtt_connections[mqtt_info['conn_id']].append(mqtt_info)
+
+                is_retrans = False
+                if hasattr(packet.tcp, 'analysis_retransmission') or hasattr(packet.tcp, 'analysis_fast_retransmission'):
+                    print("Retransmission detected in MQTT-over-TCP packet")
+                    retrans_times.append(timestamp)
+                    is_retrans = True
+                mqtt_info['is_retrans'] = is_retrans
+
             
             # Process plain TCP packets (excluding the 8883 MQTT branch)
             elif hasattr(packet, 'tcp'):
@@ -251,7 +259,17 @@ def parse_pcap(file_path):
                     'conn_id': conn_id
                 }
                 tcp_connections[conn_id].append(tcp_info)
-            
+                
+                # print("TCP packet fields:", dir(packet.tcp)) 
+
+                is_retrans = False
+                if hasattr(packet.tcp, 'analysis_retransmission') or hasattr(packet.tcp, 'analysis_fast_retransmission'):
+                    print("Retransmission detected")
+                    retrans_times.append(timestamp)
+                    is_retrans = True
+
+                tcp_info['is_retrans'] = is_retrans
+                
             # Process UDP packets
             elif hasattr(packet, 'udp'):
                 protocol = "UDP"
