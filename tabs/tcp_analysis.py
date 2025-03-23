@@ -41,7 +41,6 @@ def show_tcp_analysis_tab(df_packets, df_retrans):
         "Retransmission Analysis", 
         "TCP Flow", 
         "TCP Connections",
-        "Delay Categorization"
     ])
     
     with tcp_tabs[0]:
