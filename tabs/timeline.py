@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from visualizations import format_ms
+
 BOTTLENECK_COLOURS = {
     "Device→Broker": "#1E88E5",
     "Broker Processing": "#FFC107",
@@ -99,8 +101,8 @@ def _show_delay_timeline(frames, available):
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Samples", f"{len(plot_df):,}")
-    col2.metric("Median", f"{plot_df[column].median():.3f} ms")
-    col3.metric("95th pct", f"{plot_df[column].quantile(0.95):.3f} ms")
+    col2.metric("Median", format_ms(plot_df[column].median()))
+    col3.metric("95th pct", format_ms(plot_df[column].quantile(0.95)))
     col4.metric("Anomalies", f"{anomalies:,}")
 
     sampled = plot_df

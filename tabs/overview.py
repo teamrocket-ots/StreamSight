@@ -3,6 +3,7 @@ import streamlit as st
 
 from analysis import compute_retransmission_rate
 from pcap_parser import PROTO_MQTT_TLS
+from visualizations import format_ms
 
 PROTOCOL_COLOURS = {
     "MQTT": "green",
@@ -33,7 +34,7 @@ def show_overview_tab(df_packets, df_delays, df_retrans):
     col1.metric("Total Packets", f"{total_packets}")
     col2.metric(
         "Avg MQTT E2E Delay",
-        f"{avg_total_delay:.3f} ms" if avg_total_delay is not None else "N/A",
+        format_ms(avg_total_delay) if avg_total_delay is not None else "N/A",
     )
     col3.metric(
         "TCP Retransmission Rate",

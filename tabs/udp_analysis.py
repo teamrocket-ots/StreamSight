@@ -7,6 +7,7 @@ from pcap_parser import MIN_UDP_SAMPLES
 from visualizations import (
     congestion_heatmap,
     delay_over_time,
+    format_ms,
     hist_with_boundaries,
     shorten_endpoint,
     udp_jitter_plot,
@@ -84,30 +85,30 @@ def _describe_coverage(df_udp):
 
 def _show_overview(df_udp, conn_stats):
     st.subheader("UDP Performance Overview")
-    col1, col2, col3, col4 = st.columns(4)
 
-    if "ipd" in df_udp.columns:
-        ipd = df_udp["ipd"].dropna()
-        col1.metric("Mean Inter-Packet Delay", f"{ipd.mean():.4f} ms" if not ipd.empty else "N/A")
-
-    if "jitter" in df_udp.columns:
-        jitter = df_udp["jitter"].dropna()
-        if not jitter.empty:
-            col2.metric("Mean Jitter", f"{jitter.mean():.4f} ms")
-            col2.metric("Max Jitter", f"{jitter.max():.4f} ms")
-        else:
-            col2.metric("Mean Jitter", "N/A")
+    ipd = df_udp["ipd"].dropna() if "ipd" in df_udp.columns else pd.Series(dtype=float)
+    jitter = df_udp["jitter"].dropna() if "jitter" in df_udp.columns else pd.Series(dtype=float)
 
     total_loss = sum(s.get("possible_loss_sum", 0) or 0 for s in conn_stats.values())
     total_packets = sum(s.get("total_packets", 0) or 0 for s in conn_stats.values())
     denominator = total_packets + total_loss
-    col3.metric(
-        "Estimated Packet Loss",
-        f"{(total_loss / denominator * 100):.2f}%" if denominator else "N/A",
-        help="Inferred from timing gaps and RTP sequence numbers, not directly observed.",
-    )
 
-    col4.metric("UDP Flows", f"{df_udp['conn_id'].nunique()}" if "conn_id" in df_udp.columns else "N/A")
+    # One metric per column. Stacking two into a single column left the second
+    # one orphaned on its own row, out of line with everything beside it.
+    tiles = [
+        ("Median Inter-Packet Delay", format_ms(ipd.median()) if not ipd.empty else "N/A", None),
+        ("Median Jitter", format_ms(jitter.median()) if not jitter.empty else "N/A", None),
+        ("Max Jitter", format_ms(jitter.max()) if not jitter.empty else "N/A", None),
+        (
+            "Estimated Packet Loss",
+            f"{(total_loss / denominator * 100):.2f}%" if denominator else "N/A",
+            "Inferred from RTP sequence numbers where available, timing gaps otherwise.",
+        ),
+        ("UDP Flows", f"{df_udp['conn_id'].nunique()}" if "conn_id" in df_udp.columns else "N/A", None),
+    ]
+
+    for column, (label, value, help_text) in zip(st.columns(len(tiles)), tiles):
+        column.metric(label, value, help=help_text)
 
 
 def _show_metric(df_udp, column, label, colour, measurable):

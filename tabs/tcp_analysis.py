@@ -7,6 +7,7 @@ from pcap_parser import TCP_PROTOCOLS
 from visualizations import (
     connection_rtt_chart,
     delay_over_time,
+    format_ms,
     tcp_delay_distribution,
     tcp_health_timeline,
 )
@@ -85,7 +86,7 @@ def _show_overview(tcp_packets, df_retrans, df_tcp, df_packets):
 
     if not df_tcp.empty and "rtt" in df_tcp.columns:
         rtt = df_tcp["rtt"].dropna()
-        col4.metric("Median RTT", f"{rtt.median():.3f} ms" if not rtt.empty else "N/A")
+        col4.metric("Median RTT", format_ms(rtt.median()) if not rtt.empty else "N/A")
     else:
         col4.metric("Median RTT", "N/A")
 
@@ -115,9 +116,9 @@ def _show_delay_metrics(df_tcp):
             series = df_tcp[col].dropna()
             stat1, stat2, stat3, stat4 = st.columns(4)
             stat1.metric("Samples", f"{len(series)}")
-            stat2.metric("Mean", f"{series.mean():.3f} ms")
-            stat3.metric("Median", f"{series.median():.3f} ms")
-            stat4.metric("95th pct", f"{series.quantile(0.95):.3f} ms")
+            stat2.metric("Mean", format_ms(series.mean()))
+            stat3.metric("Median", format_ms(series.median()))
+            stat4.metric("95th pct", format_ms(series.quantile(0.95)))
 
             st.plotly_chart(
                 tcp_delay_distribution(df_tcp, col, f"TCP {label} Distribution"),
@@ -205,14 +206,14 @@ def _show_encrypted_stream_metrics(df_tcp, label_col):
     if has_throughput:
         per_conn = df_tcp.groupby(label_col)["conn_throughput_kbps"].first().dropna()
         if not per_conn.empty:
-            col1.metric("Peak Connection Throughput", f"{per_conn.max():,.1f} kbit/s")
+            col1.metric("Peak Throughput", f"{per_conn.max():,.0f} kbit/s")
             col1.metric("Total Bytes", f"{int(df_tcp.groupby(label_col)['conn_bytes'].first().sum()):,}")
 
     if has_handshake:
         handshakes = df_tcp.groupby(label_col)["tls_handshake_ms"].first().dropna()
         if not handshakes.empty:
-            col2.metric("Median TLS Handshake", f"{handshakes.median():.2f} ms")
-            col2.metric("Slowest TLS Handshake", f"{handshakes.max():.2f} ms")
+            col2.metric("Median TLS Handshake", format_ms(handshakes.median()))
+            col2.metric("Slowest TLS Handshake", format_ms(handshakes.max()))
 
 
 def _show_flow(tcp_packets):

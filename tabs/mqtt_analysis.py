@@ -7,7 +7,12 @@ import streamlit as st
 from analysis import analyze_mqtt_delays
 from tabs.delay_analysis import show_delay_analysis_tab
 from tabs.insights import show_insights_tab
-from visualizations import delay_over_time, hist_with_boundaries, mqtt_delay_components
+from visualizations import (
+    delay_over_time,
+    format_ms,
+    hist_with_boundaries,
+    mqtt_delay_components,
+)
 
 CATEGORY_COLOURS = {
     "Low": "green",
@@ -71,7 +76,7 @@ def _show_overview(df_mqtt, stats):
         (col2, "broker_processing_delay", "Avg Broker Processing Delay"),
     ):
         if column in df_mqtt.columns and df_mqtt[column].notna().any():
-            col.metric(label, f"{df_mqtt[column].dropna().mean():.4f} ms")
+            col.metric(label, format_ms(df_mqtt[column].dropna().mean()))
         else:
             col.metric(label, "N/A")
 

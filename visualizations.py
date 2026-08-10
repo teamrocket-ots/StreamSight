@@ -8,15 +8,54 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 
-PLOT_BG = "rgba(240, 240, 240, 0.8)"
-GRID = "rgba(200, 200, 200, 0.2)"
+#: Charts are transparent so they sit on Streamlit's own background and follow
+#: the active theme. A fixed light plot background looks like a grey card
+#: pasted onto a dark page -- and inverts the problem on a light one.
+PLOT_BG = "rgba(0,0,0,0)"
+
+#: Grid drawn in a neutral at low alpha, which reads correctly on either theme
+#: without needing to know which one is active.
+GRID = "rgba(128,128,128,0.22)"
+AXIS_LINE = "rgba(128,128,128,0.35)"
+
+
+def _register_template():
+    """Register the house chart style as Plotly's default.
+
+    Most charts are built directly with plotly.express in the tab modules rather
+    than through the helpers here, so styling them one call site at a time
+    guarantees drift. A template applies to every figure in the process,
+    including ones added later.
+
+    Only backgrounds and gridlines are set. Text colour is deliberately left
+    alone so Streamlit's own theming continues to supply it and the charts
+    follow light or dark automatically.
+    """
+    template = go.layout.Template()
+    template.layout = go.Layout(
+        plot_bgcolor=PLOT_BG,
+        paper_bgcolor=PLOT_BG,
+        xaxis=dict(gridcolor=GRID, linecolor=AXIS_LINE, zeroline=False),
+        yaxis=dict(gridcolor=GRID, linecolor=AXIS_LINE, zeroline=False),
+        margin=dict(l=60, r=25, t=55, b=55),
+    )
+    pio.templates["streamsight"] = template
+    pio.templates.default = f"{pio.templates.default}+streamsight"
+
+
+_register_template()
 
 
 def _empty_figure(message):
     """A titled, empty figure used wherever there is nothing to plot."""
     fig = go.Figure()
-    fig.update_layout(title=message)
+    fig.update_layout(
+        title=message,
+        plot_bgcolor=PLOT_BG,
+        paper_bgcolor=PLOT_BG,
+    )
     return fig
 
 
@@ -24,10 +63,29 @@ def _styled(fig):
     """Apply the shared axis and background styling."""
     fig.update_layout(
         plot_bgcolor=PLOT_BG,
-        xaxis=dict(showgrid=True, gridcolor=GRID),
-        yaxis=dict(showgrid=True, gridcolor=GRID),
+        paper_bgcolor=PLOT_BG,
+        xaxis=dict(showgrid=True, gridcolor=GRID, linecolor=AXIS_LINE, zeroline=False),
+        yaxis=dict(showgrid=True, gridcolor=GRID, linecolor=AXIS_LINE, zeroline=False),
     )
     return fig
+
+
+def format_ms(value):
+    """Format a millisecond value at a sensible precision for its magnitude.
+
+    Four decimal places on a 5,881 ms value is noise, and it is wide enough that
+    Streamlit truncates the metric tile showing it.
+    """
+    if value is None or not np.isfinite(value):
+        return "N/A"
+    magnitude = abs(value)
+    if magnitude >= 1000:
+        return f"{value:,.0f} ms"
+    if magnitude >= 100:
+        return f"{value:.1f} ms"
+    if magnitude >= 1:
+        return f"{value:.2f} ms"
+    return f"{value:.3f} ms"
 
 
 #: Above this many distinct series a legend stops being readable and is dropped.
@@ -170,26 +228,54 @@ def hist_with_boundaries(df, xcol, title, color="royalblue", unit="ms"):
     std_val = values.std()
     median_val = values.median()
 
-    fig.add_vline(
-        x=mean_val, line_width=2, line_dash="dash", line_color="red",
-        annotation_text=f"Mean: {mean_val:.3f}{unit}",
-        annotation_position="top right", annotation_font=dict(size=12),
-    )
-    fig.add_vline(
-        x=median_val, line_width=2, line_dash="dot", line_color="green",
-        annotation_text=f"Median: {median_val:.3f}{unit}",
-        annotation_position="top left", annotation_font=dict(size=12),
-    )
+    # The ±1σ band sits behind the bars at low alpha. At the previous opacity it
+    # read as a solid grey block covering most of the plot.
     if not np.isnan(std_val) and std_val > 0:
         fig.add_vrect(
             x0=mean_val - std_val, x1=mean_val + std_val,
-            fillcolor="rgba(0, 100, 80, 0.2)", opacity=0.4, line_width=0,
-            annotation_text=f"±1σ: {std_val:.3f}{unit}",
-            annotation_position="bottom right",
+            fillcolor="rgba(128,128,128,0.16)", opacity=1, line_width=0, layer="below",
         )
 
-    fig.update_layout(bargap=0.1)
+    # Mean and median are often close together, so their labels collided into an
+    # unreadable overlap. Anchoring them to opposite ends of the plot keeps them
+    # apart regardless of how near the two lines are.
+    fig.add_vline(
+        x=mean_val, line_width=2, line_dash="dash", line_color="#E45756",
+        annotation_text=f"mean {_short(mean_val)}{unit}",
+        annotation_position="top left",
+        annotation_font=dict(size=11, color="#E45756"),
+    )
+    fig.add_vline(
+        x=median_val, line_width=2, line_dash="dot", line_color="#54A24B",
+        annotation_text=f"median {_short(median_val)}{unit}",
+        annotation_position="bottom right",
+        annotation_font=dict(size=11, color="#54A24B"),
+    )
+
+    fig.update_layout(
+        bargap=0.1,
+        margin=dict(l=60, r=25, t=55, b=55),
+    )
+    if not np.isnan(std_val) and std_val > 0:
+        fig.add_annotation(
+            xref="paper", yref="paper", x=1, y=1.06,
+            showarrow=False, xanchor="right",
+            text=f"±1σ {_short(std_val)}{unit}",
+            font=dict(size=11, color="rgba(128,128,128,0.95)"),
+        )
     return _styled(fig)
+
+
+def _short(value):
+    """Compact number for a chart annotation, where space is tight."""
+    magnitude = abs(value)
+    if magnitude >= 1000:
+        return f"{value:,.0f}"
+    if magnitude >= 10:
+        return f"{value:.1f}"
+    if magnitude >= 1:
+        return f"{value:.2f}"
+    return f"{value:.3f}"
 
 
 def tcp_delay_distribution(df_tcp, delay_type, title=None):

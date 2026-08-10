@@ -3,7 +3,7 @@ import plotly.express as px  # noqa: F401 -- used by the category pie charts bel
 import streamlit as st
 
 from analysis import categorize_delays, detect_anomalies_in_delays
-from visualizations import hist_with_boundaries
+from visualizations import format_ms, hist_with_boundaries
 
 CATEGORY_COLOURS = {
     "Low": "green",
@@ -63,7 +63,7 @@ def _show_metrics(df_delays):
     for col, (column, label, _) in zip(columns, DELAY_VIEWS):
         if column in df_delays.columns:
             value = df_delays[column].mean()
-            col.metric(f"Avg {label}", f"{value:.3f} ms" if pd.notna(value) else "N/A")
+            col.metric(f"Avg {label}", format_ms(value) if pd.notna(value) else "N/A")
         else:
             col.metric(f"Avg {label}", "N/A")
 
