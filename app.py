@@ -216,7 +216,7 @@ def main():
     with mqtt:
         show_mqtt_analysis_tab(df_mqtt, df_delays)
     with timeline:
-        show_timeline_tab(df_delays, df_retrans, df_tcp, df_udp)
+        show_timeline_tab(df_delays, df_tcp, df_udp)
     with explore:
         show_explore_tab(df_packets, df_delays, df_retrans, df_tcp, df_udp)
 
