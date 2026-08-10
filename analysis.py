@@ -265,21 +265,28 @@ def analyze_mqtt_delays(df_mqtt):
 
 
 #: Metrics analysed for root cause, each on its own terms.
-#: (label, frame key, column, what it measures)
+#: (label, frame key, column, description, kind)
+#:
+#: ``kind`` matters for what may be reported as a problem. A "latency" is time
+#: something waited, so a large value is bad. A "cadence" is the gap between one
+#: packet and the next, where a large value usually just means the sender had
+#: nothing to send -- mDNS announcing every ten seconds is not a slow endpoint.
 ROOT_CAUSE_SOURCES = [
     (
         "TCP ACK Delay", "tcp", "ack_delay",
         "Time from sending a data segment to the peer acknowledging it.",
+        "latency",
     ),
     (
         "UDP Inter-Packet Delay", "udp", "ipd",
-        "Gap between consecutive packets on a flow. This is a sending *cadence*, "
-        "not a latency — a large value usually means the source simply had nothing "
-        "to send.",
+        "Gap between consecutive packets on a flow — a sending cadence rather than "
+        "a latency, so a large value usually means the source had nothing to send.",
+        "cadence",
     ),
     (
         "MQTT End-to-End Delay", "delays", "total_delay",
         "Client publish through to the final acknowledgement.",
+        "latency",
     ),
 ]
 
@@ -300,7 +307,7 @@ def perform_root_cause_analysis(df_tcp=None, df_udp=None, df_delays=None):
     }
 
     analyses = []
-    for label, key, column, description in ROOT_CAUSE_SOURCES:
+    for label, key, column, description, kind in ROOT_CAUSE_SOURCES:
         df = frames[key]
         if df.empty or column not in df.columns:
             continue
@@ -322,7 +329,9 @@ def perform_root_cause_analysis(df_tcp=None, df_udp=None, df_delays=None):
             # few factors that can *explain* a delay rather than merely accompany it.
             "zero_window": subset.get("zero_window", pd.Series(False, index=subset.index)),
         })
-        analyses.append(RootCauseAnalysis(observations, metric=label, description=description))
+        analyses.append(
+            RootCauseAnalysis(observations, metric=label, description=description, kind=kind)
+        )
 
     return analyses
 
