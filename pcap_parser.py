@@ -649,8 +649,13 @@ def ensure_dataframe_types(df):
         elif col in bool_cols:
             # Replace missing values before casting: a bare astype(bool) turns
             # NaN into True, which would silently mark packets as retransmissions.
-            filled = df[col].where(df[col].notna(), False)
-            df[col] = filled.infer_objects(copy=False).astype(bool)
+            #
+            # .where() avoids pandas 2.x's downcasting FutureWarning on fillna,
+            # and converting through to_numpy(dtype=bool) avoids pandas 3.x's
+            # deprecation of infer_objects(copy=...). Both dtype decisions are
+            # made explicitly here rather than left to inference.
+            series = df[col]
+            df[col] = series.where(series.notna(), False).to_numpy(dtype=bool)
         elif col in string_cols:
             df[col] = df[col].astype(str)
 
