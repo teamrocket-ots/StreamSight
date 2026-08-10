@@ -13,11 +13,17 @@ BOTTLENECK_COLOURS = {
 
 #: Candidate delay series, in the order they are offered.
 #: (label, frame key, column, timestamp column, unit)
+#: Retransmissions are events rather than a delay series, but they share the
+#: time axis and belong beside the other TCP options rather than appended after
+#: the MQTT ones.
+RETRANS_OPTION = "TCP Retransmissions"
+
 SERIES = [
     ("TCP Round-Trip Time", "tcp", "rtt", "timestamp"),
     ("TCP ACK Delay", "tcp", "ack_delay", "timestamp"),
     ("TCP Inter-Packet Delay", "tcp", "ipd", "timestamp"),
     ("TCP Jitter", "tcp", "jitter", "timestamp"),
+    (RETRANS_OPTION, "retrans", "time", "time"),
     ("UDP Inter-Packet Delay", "udp", "ipd", "timestamp"),
     ("UDP Jitter", "udp", "jitter", "timestamp"),
     ("MQTT Total Delay", "delays", "total_delay", "device_publish_time"),
@@ -29,7 +35,7 @@ SERIES = [
 MAX_POINTS = 4000
 
 
-def show_timeline_tab(df_delays, df_tcp=None, df_udp=None):
+def show_timeline_tab(df_delays, df_retrans, df_tcp=None, df_udp=None):
     """Temporal view of whatever delay measurements the capture supports."""
     st.header("Timeline")
     st.markdown("Delay behaviour and network events over the life of the capture.")
@@ -38,6 +44,7 @@ def show_timeline_tab(df_delays, df_tcp=None, df_udp=None):
         "tcp": df_tcp if df_tcp is not None else pd.DataFrame(),
         "udp": df_udp if df_udp is not None else pd.DataFrame(),
         "delays": df_delays if df_delays is not None else pd.DataFrame(),
+        "retrans": df_retrans if df_retrans is not None else pd.DataFrame(),
     }
 
     available = [
@@ -56,7 +63,10 @@ def show_timeline_tab(df_delays, df_tcp=None, df_udp=None):
         return
 
     choice = st.selectbox("Metric", options, index=0)
-    _show_delay_timeline(frames, available, choice)
+    if choice == RETRANS_OPTION:
+        _show_retransmissions(frames["retrans"])
+    else:
+        _show_delay_timeline(frames, available, choice)
 
     if _has_series(frames["delays"], "total_delay", "device_publish_time"):
         st.divider()
@@ -146,6 +156,34 @@ def _show_delay_timeline(frames, available, choice):
             color="Bottleneck", color_discrete_map=BOTTLENECK_COLOURS,
         )
         st.plotly_chart(fig_b, use_container_width=True, key="timeline_chart_2")
+
+
+def _show_retransmissions(df_retrans):
+    """Retransmission events on the same time axis as the delay series."""
+    time_col = next((c for c in ("time", "timestamp") if c in df_retrans.columns), None)
+    if time_col is None:
+        st.warning("Retransmission events have no timestamp column to plot.")
+        return
+
+    plot_df = df_retrans.copy()
+    plot_df["timestamp"] = pd.to_datetime(plot_df[time_col], unit="s")
+
+    span = plot_df["timestamp"].max() - plot_df["timestamp"].min()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Retransmissions", f"{len(df_retrans):,}")
+    col2.metric("First", plot_df["timestamp"].min().strftime("%H:%M:%S"))
+    col3.metric("Spread", f"{span.total_seconds():,.1f} s")
+
+    fig = px.scatter(
+        plot_df, x="timestamp", y=[1] * len(plot_df),
+        title="Retransmission Events Over Time",
+        labels={"timestamp": "Time"}, height=260,
+    )
+    fig.update_traces(marker=dict(color="#E45756", size=10, symbol="line-ns",
+                                  line=dict(width=2, color="#E45756")))
+    fig.update_yaxes(visible=False)
+    fig.update_xaxes(rangeslider_visible=True)
+    st.plotly_chart(fig, use_container_width=True, key="timeline_retrans")
 
 
 def _show_correlations(df_delays):
