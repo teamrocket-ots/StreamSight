@@ -137,15 +137,16 @@ def _tshark_status():
 
 
 def _sidebar_capture_support():
-    """Show whether the host can read capture files at all.
+    """Warn when the host cannot read capture files.
 
     tshark is an OS package, not a Python dependency, so on a hosted deployment
-    it can be missing while everything else works. Without this the first sign
-    of trouble is an upload failing for no visible reason.
+    it can be missing while everything else works — and the first sign of
+    trouble would otherwise be an upload failing for no visible reason.
+
+    Silent on success: a working install is the expected case and does not need
+    a line of its own.
     """
-    version = _tshark_status()
-    if version:
-        st.sidebar.caption(f"✅ {version}")
+    if _tshark_status():
         return
 
     st.sidebar.error("tshark not found — uploads will fail")
