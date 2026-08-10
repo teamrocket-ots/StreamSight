@@ -25,10 +25,32 @@ from units import SEC_TO_MS
 
 logger = logging.getLogger(__name__)
 
-# Set event loop policy and apply nest_asyncio (always apply to avoid loop issues)
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-nest_asyncio.apply()
+#: nest_asyncio and the Windows loop policy are only needed by the PyShark
+#: reader. They are applied on first use rather than at import, because
+#: nest_asyncio.apply() monkey-patches asyncio for the entire process — and in a
+#: Streamlit app that process is also running an async web server. Patching it
+#: from an import is a landmine, and nest_asyncio has been unmaintained since
+#: 2023, so it breaks on each new Python release.
+#:
+#: The default tshark reader drives a subprocess and touches no asyncio at all,
+#: so most runs never reach this.
+_ASYNCIO_PREPARED = False
+
+
+def _prepare_asyncio():
+    """Set up asyncio for PyShark. Safe to call repeatedly."""
+    global _ASYNCIO_PREPARED
+    if _ASYNCIO_PREPARED:
+        return
+
+    # PyShark drives tshark as a subprocess; the default Windows selector loop
+    # cannot do subprocess pipes.
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+    # Streamlit already runs an event loop, so PyShark needs re-entrancy.
+    nest_asyncio.apply()
+    _ASYNCIO_PREPARED = True
 
 MQTT_PORT = 1883
 MQTT_TLS_PORT = 8883
@@ -202,6 +224,8 @@ def _iter_rows_pyshark(file_path, display_filter="mqtt or tcp or udp"):
     Kept as a fallback for environments where tshark cannot be driven directly.
     Slower, because PyShark deserialises every layer of every packet.
     """
+    _prepare_asyncio()
+
     previous_loop = None
     try:
         previous_loop = asyncio.get_event_loop()

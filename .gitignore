@@ -18,3 +18,6 @@ __pycache__/
 *.pcap
 *.pcapng
 !tests/fixtures/*.pcapng
+
+# Streamlit Cloud deploy logs (local only)
+logs-*.txt
