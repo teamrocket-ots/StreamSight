@@ -129,6 +129,32 @@ def load_data(uploaded_file):
     return data, False
 
 
+@st.cache_data(ttl=3600)
+def _tshark_status():
+    """Cached so the version subprocess runs once per hour, not per rerun."""
+    from tshark_backend import tshark_version
+    return tshark_version()
+
+
+def _sidebar_capture_support():
+    """Show whether the host can read capture files at all.
+
+    tshark is an OS package, not a Python dependency, so on a hosted deployment
+    it can be missing while everything else works. Without this the first sign
+    of trouble is an upload failing for no visible reason.
+    """
+    version = _tshark_status()
+    if version:
+        st.sidebar.caption(f"✅ {version}")
+        return
+
+    st.sidebar.error("tshark not found — uploads will fail")
+    st.sidebar.caption(
+        "Demo data still works. To read captures, install Wireshark and make "
+        "sure `tshark` is on PATH."
+    )
+
+
 def _sidebar_summary(df_packets, df_tcp, df_udp, df_mqtt):
     """Capture facts worth having visible from every tab."""
     if df_packets.empty:
@@ -162,6 +188,7 @@ def main():
     uploaded_file = st.sidebar.file_uploader(
         "Upload a capture", type=["pcap", "pcapng"]
     )
+    _sidebar_capture_support()
 
     data, failed = load_data(uploaded_file)
     if failed or data is None:

@@ -83,6 +83,34 @@ def tshark_path():
         return path
 
 
+def tshark_version():
+    """Return the installed tshark version string, or None if unavailable.
+
+    Used to surface capture support in the UI. On a hosted deployment tshark is
+    an OS package rather than a Python dependency, so it can be missing while
+    everything else works -- without this the first sign of trouble is an
+    upload failing.
+    """
+    try:
+        path = tshark_path()
+    except Exception:
+        return None
+
+    try:
+        result = subprocess.run(
+            [path, "--version"],
+            capture_output=True, text=True, timeout=15,
+            encoding="utf-8", errors="replace",
+        )
+    except Exception:
+        return None
+
+    if result.returncode != 0:
+        return None
+    first_line = (result.stdout or "").strip().splitlines()
+    return first_line[0] if first_line else "unknown version"
+
+
 def _first(value):
     """First occurrence of a possibly multi-valued field.
 
