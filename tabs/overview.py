@@ -63,7 +63,7 @@ def show_overview_tab(df_packets, df_delays, df_retrans):
         color="protocol", color_discrete_map=PROTOCOL_COLOURS,
     )
     fig.update_traces(marker_line_color="rgba(0,0,0,0.5)", marker_line_width=1)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="overview_chart_1")
 
     if PROTO_MQTT_TLS in set(proto_count["protocol"]):
         encrypted = int((df_packets["protocol"] == PROTO_MQTT_TLS).sum())

@@ -77,6 +77,7 @@ def _show_delay_view(df_delays, column, label, colour):
     st.plotly_chart(
         hist_with_boundaries(df_delays, column, f"{label} Distribution", color=colour),
         use_container_width=True,
+        key=f"delay_hist_{column}",
     )
 
     category_col = f"{column}_category"
@@ -88,7 +89,7 @@ def _show_delay_view(df_delays, column, label, colour):
             title=f"{label} Categories",
             color="Category", color_discrete_map=CATEGORY_COLOURS,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"delay_cat_{column}")
 
     if column == "total_delay" and "bottleneck" in df_delays.columns:
         counts = df_delays["bottleneck"].value_counts().reset_index()
@@ -103,7 +104,7 @@ def _show_delay_view(df_delays, column, label, colour):
                 "Cloud Upload": "red",
             },
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"delay_bottleneck_{column}")
 
 
 def _show_anomalies(df_delays):
@@ -138,4 +139,4 @@ def _show_anomalies(df_delays):
             x="Component", y="Anomaly Count",
             title="Anomalies by Component", color="Component",
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="delay_analysis_chart_3")

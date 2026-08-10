@@ -123,11 +123,12 @@ def _show_delay_metrics(df_tcp):
             st.plotly_chart(
                 tcp_delay_distribution(df_tcp, col, f"TCP {label} Distribution"),
                 use_container_width=True,
+                key=f"tcp_dist_{col}",
             )
 
             if "timestamp" in df_tcp.columns:
                 fig, log_scale = delay_over_time(df_tcp, col, label)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"tcp_time_{col}")
                 if log_scale:
                     st.caption(
                         "Y-axis is logarithmic: this metric is heavily right-tailed, "
@@ -155,7 +156,7 @@ def _show_health(df_tcp):
         count = int(df_tcp[column].fillna(False).astype(bool).sum())
         cols[index % len(cols)].metric(label, f"{count}", help=hint)
 
-    st.plotly_chart(tcp_health_timeline(df_tcp), use_container_width=True)
+    st.plotly_chart(tcp_health_timeline(df_tcp), use_container_width=True, key="tcp_analysis_chart_2")
 
 
 def _show_connections(df_tcp, conn_stats):
@@ -167,7 +168,7 @@ def _show_connections(df_tcp, conn_stats):
     label_col = "conn_label" if "conn_label" in df_tcp.columns else "conn_id"
     st.metric("Distinct TCP Connections", f"{df_tcp['conn_id'].nunique()}")
 
-    st.plotly_chart(connection_rtt_chart(df_tcp), use_container_width=True)
+    st.plotly_chart(connection_rtt_chart(df_tcp), use_container_width=True, key="tcp_analysis_chart_3")
 
     _show_encrypted_stream_metrics(df_tcp, label_col)
 
@@ -235,7 +236,7 @@ def _show_flow(tcp_packets):
             labels={"packet_count": "Packet Count", "datetime": "Time"},
         )
         fig.update_xaxes(tickformat="%H:%M:%S", rangeslider_visible=True)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="tcp_analysis_chart_4")
     except Exception as exc:
         st.error(f"Error creating flow chart: {exc}")
 
@@ -259,7 +260,7 @@ def _show_retransmissions(df_retrans):
             labels={"count": "Number of Retransmissions", "time": "Time"},
         )
         fig.update_xaxes(tickformat="%H:%M:%S", rangeslider_visible=True)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="tcp_analysis_chart_5")
     except Exception as exc:
         st.error(f"Error creating timeline: {exc}")
 

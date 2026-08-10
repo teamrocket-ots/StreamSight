@@ -94,12 +94,12 @@ def _show_metric(result):
         st.caption("No issues stood out for this metric.")
 
     with st.expander("Breakdown by factor"):
-        _show_factor_charts(result["factors"])
+        _show_factor_charts(result["factors"], result["metric"])
 
     st.divider()
 
 
-def _show_factor_charts(factors):
+def _show_factor_charts(factors, metric):
     available = [(key, label) for key, label in FACTOR_LABELS if factors.get(key)]
     if not available:
         st.caption("No factor in this capture has more than one distinct value.")
@@ -133,7 +133,7 @@ def _show_factor_charts(factors):
                 xaxis={"tickangle": 25},
                 margin=dict(l=60, r=20, t=20, b=90),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key=f"rootcause_{metric}_{key}")
 
             dropped = len(df) - len(trusted)
             if dropped:

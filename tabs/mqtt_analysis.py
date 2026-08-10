@@ -97,7 +97,7 @@ def _show_overview(df_mqtt, stats):
 
 def _show_components(df_mqtt):
     st.subheader("MQTT Delay Component Analysis")
-    st.plotly_chart(mqtt_delay_components(df_mqtt), use_container_width=True)
+    st.plotly_chart(mqtt_delay_components(df_mqtt), use_container_width=True, key="mqtt_analysis_chart_1")
 
     if "bottleneck" in df_mqtt.columns and df_mqtt["bottleneck"].notna().any():
         counts = df_mqtt["bottleneck"].value_counts().reset_index()
@@ -112,7 +112,7 @@ def _show_components(df_mqtt):
                 "Cloud Upload": "red",
             },
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="mqtt_analysis_chart_2")
 
 
 def _show_delay(df_mqtt, column, label, colour):
@@ -129,11 +129,12 @@ def _show_delay(df_mqtt, column, label, colour):
     st.plotly_chart(
         hist_with_boundaries(data, column, f"{label} Distribution", color=colour),
         use_container_width=True,
+        key=f"mqtt_hist_{column}",
     )
 
     if "timestamp" in data.columns:
         fig, _ = delay_over_time(data, column, label, group_col="msg_type_name")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"mqtt_time_{column}")
 
     category_col = f"{column}_category"
     if category_col in df_mqtt.columns and df_mqtt[category_col].notna().any():
@@ -143,7 +144,7 @@ def _show_delay(df_mqtt, column, label, colour):
             counts, x="Category", y="Count", title=f"{label} Categories",
             color="Category", color_discrete_map=CATEGORY_COLOURS,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=f"mqtt_cat_{column}")
 
 
 def _show_topology(df_mqtt, stats):
@@ -249,4 +250,4 @@ def _draw_topology(df_mqtt, brokers, clients):
         height=max(300, 60 * max(len(nodes), 1)),
         margin=dict(l=40, r=40, b=40, t=60),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="mqtt_analysis_chart_5")
