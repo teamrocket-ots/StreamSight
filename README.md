@@ -65,6 +65,44 @@ Parsing is cached on the file's contents, so filtering and navigating tabs do no
 the capture. The first parse of a large file can take several minutes — PyShark is the
 bottleneck, not the analysis.
 
+## Deployment
+
+The one real constraint is that **StreamSight needs `tshark` on the host**, not just Python
+packages. It only ever *reads* capture files, so it needs no packet-capture privileges and can run
+as a non-root user.
+
+The app boots without tshark — demo mode works and uploads fail with a readable message — so a
+failed tshark install degrades rather than crashes.
+
+### Streamlit Community Cloud (simplest, free)
+
+`packages.txt` is already in the repo, which is how Community Cloud installs apt packages.
+
+1. Push to a public GitHub repo
+2. At [share.streamlit.io](https://share.streamlit.io), point a new app at `app.py`
+3. It reads `requirements.txt` and `packages.txt` automatically
+
+Limits to be aware of: ~1 GB RAM, and the app sleeps after inactivity. `.streamlit/config.toml`
+caps uploads at 50 MB so a too-large capture fails at upload instead of exhausting memory mid-parse.
+
+### Hugging Face Spaces / Render / Railway / Fly.io
+
+Use the included `Dockerfile`, which installs tshark itself and honours `$PORT`.
+
+For Hugging Face Spaces, create a Space with the **Docker** SDK and add to the README front matter:
+
+```yaml
+sdk: docker
+app_port: 7860
+```
+
+### Local
+
+```
+docker build -t streamsight .
+docker run -p 8501:8501 streamsight
+```
+
 ## Core Logic
 
 ### Packet Processing Pipeline (`pcap_parser.py`)
