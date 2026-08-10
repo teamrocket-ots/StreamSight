@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from ui import STRETCH
 from analysis import perform_root_cause_analysis, root_cause_report
 from visualizations import shorten_endpoint
 
@@ -120,7 +121,7 @@ def _show_factor_charts(factors, metric):
             trusted = df[df["Samples"] >= MIN_SAMPLES_FOR_TREND]
             if trusted.empty:
                 st.caption("Every group here has too few samples to read as a trend.")
-                st.dataframe(df, use_container_width=True, hide_index=True)
+                st.dataframe(df, **STRETCH, hide_index=True)
                 continue
 
             fig = px.bar(
@@ -133,7 +134,7 @@ def _show_factor_charts(factors, metric):
                 xaxis={"tickangle": 25},
                 margin=dict(l=60, r=20, t=20, b=90),
             )
-            st.plotly_chart(fig, use_container_width=True, key=f"rootcause_{metric}_{key}")
+            st.plotly_chart(fig, **STRETCH, key=f"rootcause_{metric}_{key}")
 
             dropped = len(df) - len(trusted)
             if dropped:
@@ -143,5 +144,5 @@ def _show_factor_charts(factors, metric):
                 )
             st.dataframe(
                 df.sort_values("Mean Delay (ms)", ascending=False),
-                use_container_width=True, hide_index=True,
+                **STRETCH, hide_index=True,
             )

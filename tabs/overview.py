@@ -1,6 +1,7 @@
 import plotly.express as px
 import streamlit as st
 
+from ui import STRETCH
 from analysis import compute_retransmission_rate
 from pcap_parser import PROTO_MQTT_TLS
 from visualizations import format_ms
@@ -63,7 +64,7 @@ def show_overview_tab(df_packets, df_delays, df_retrans):
         color="protocol", color_discrete_map=PROTOCOL_COLOURS,
     )
     fig.update_traces(marker_line_color="rgba(0,0,0,0.5)", marker_line_width=1)
-    st.plotly_chart(fig, use_container_width=True, key="overview_chart_1")
+    st.plotly_chart(fig, **STRETCH, key="overview_chart_1")
 
     if PROTO_MQTT_TLS in set(proto_count["protocol"]):
         encrypted = int((df_packets["protocol"] == PROTO_MQTT_TLS).sum())

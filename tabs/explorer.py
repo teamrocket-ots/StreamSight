@@ -1,5 +1,7 @@
 import streamlit as st
 
+from ui import STRETCH
+
 
 def show_explorer_tab(df_packets, df_delays, df_retrans, df_tcp=None, df_udp=None):
     """Raw data tables with CSV export."""
@@ -24,7 +26,7 @@ def show_explorer_tab(df_packets, df_delays, df_retrans, df_tcp=None, df_udp=Non
 
         st.caption(f"{len(df):,} rows x {len(df.columns)} columns")
         with st.expander(f"View {label.lower()}", expanded=(label == "Packets")):
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, **STRETCH)
 
         st.download_button(
             label=f"Download {label} CSV",

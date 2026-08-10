@@ -1,6 +1,8 @@
 import pandas as pd
 import streamlit as st
 
+from ui import STRETCH
+
 DELAY_CATEGORIES = ["Low", "Normal", "High", "Very High"]
 
 
@@ -57,7 +59,7 @@ def _show_packet_filters(df_packets):
             filtered = filtered[mask]
 
     st.write(f"Matching packets: **{len(filtered)}** of {len(df_packets)}")
-    st.dataframe(filtered, use_container_width=True)
+    st.dataframe(filtered, **STRETCH)
 
     if not filtered.empty:
         st.download_button(
@@ -109,4 +111,4 @@ def _show_delay_filters(df_delays):
 
     display_cols = [c for c in ("msg_id", delay_type, category_col, "bottleneck", "is_anomaly")
                     if c in filtered.columns]
-    st.dataframe(filtered[display_cols], use_container_width=True)
+    st.dataframe(filtered[display_cols], **STRETCH)

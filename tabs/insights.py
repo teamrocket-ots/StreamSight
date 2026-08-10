@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from ui import STRETCH
 from analysis import categorize_delays, detect_anomalies_in_delays
 
 BOTTLENECK_COLOURS = {
@@ -69,7 +70,7 @@ def show_insights_tab(df_delays: pd.DataFrame):
             title="Primary Delay Contributors",
             color="Bottleneck", color_discrete_map=BOTTLENECK_COLOURS,
         )
-        st.plotly_chart(fig, use_container_width=True, key="bottleneck_pie")
+        st.plotly_chart(fig, **STRETCH, key="bottleneck_pie")
     else:
         st.info("Bottleneck analysis not available.")
 
@@ -85,4 +86,4 @@ def show_insights_tab(df_delays: pd.DataFrame):
         return
 
     available = [c for c in SUMMARY_COLUMNS if c in anomalies.columns]
-    st.dataframe(anomalies[available], use_container_width=True, key="anomalies_table")
+    st.dataframe(anomalies[available], **STRETCH, key="anomalies_table")

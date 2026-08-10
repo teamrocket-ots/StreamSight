@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from ui import STRETCH
 from analysis import analyze_udp_delays
 from pcap_parser import MIN_UDP_SAMPLES
 from visualizations import (
@@ -124,13 +125,13 @@ def _show_metric(df_udp, column, label, colour, measurable):
 
     st.plotly_chart(
         hist_with_boundaries(data, column, f"UDP {label} Distribution", color=colour),
-        use_container_width=True,
+        **STRETCH,
         key=f"udp_hist_{column}",
     )
 
     if "timestamp" in data.columns:
         fig, log_scale = delay_over_time(data, column, label)
-        st.plotly_chart(fig, use_container_width=True, key=f"udp_time_{column}")
+        st.plotly_chart(fig, **STRETCH, key=f"udp_time_{column}")
         if log_scale:
             st.caption(
                 "Y-axis is logarithmic: this metric is heavily right-tailed, so a "
@@ -169,7 +170,7 @@ def _show_loss(df_udp, measurable):
                     font=dict(size=10), title=None),
         margin=dict(l=70, r=25, t=55, b=70),
     )
-    st.plotly_chart(fig, use_container_width=True, key="udp_analysis_chart_2")
+    st.plotly_chart(fig, **STRETCH, key="udp_analysis_chart_2")
 
     by_conn = loss_data.groupby(label_col)["possible_loss"].sum().reset_index()
     by_conn["Flow"] = by_conn[label_col].map(shorten_endpoint)
@@ -182,7 +183,7 @@ def _show_loss(df_udp, measurable):
         height=400,
     )
     fig.update_layout(xaxis={"tickangle": 25}, margin=dict(l=70, r=25, t=55, b=110))
-    st.plotly_chart(fig, use_container_width=True, key="udp_analysis_chart_3")
+    st.plotly_chart(fig, **STRETCH, key="udp_analysis_chart_3")
 
     if "seq_loss" in loss_data.columns and loss_data["seq_loss"].notna().any():
         st.caption(
@@ -203,8 +204,8 @@ def _show_congestion(df_udp, measurable):
         st.warning("No congestion measurements could be made on this capture.")
         return
 
-    st.plotly_chart(udp_jitter_plot(data), use_container_width=True, key="udp_analysis_chart_4")
-    st.plotly_chart(congestion_heatmap(data), use_container_width=True, key="udp_analysis_chart_5")
+    st.plotly_chart(udp_jitter_plot(data), **STRETCH, key="udp_analysis_chart_4")
+    st.plotly_chart(congestion_heatmap(data), **STRETCH, key="udp_analysis_chart_5")
 
     if "congestion_level" in data.columns:
         counts = data["congestion_level"].value_counts().reset_index()
@@ -217,7 +218,7 @@ def _show_congestion(df_udp, measurable):
                 "Low": "green", "Medium": "yellow", "High": "orange", "Very High": "red",
             },
         )
-        st.plotly_chart(fig, use_container_width=True, key="udp_analysis_chart_6")
+        st.plotly_chart(fig, **STRETCH, key="udp_analysis_chart_6")
 
 
 def _show_connections(df_udp, conn_stats):
@@ -236,4 +237,4 @@ def _show_connections(df_udp, conn_stats):
         row.update(stats)
         rows.append(row)
 
-    st.dataframe(pd.DataFrame(rows), use_container_width=True)
+    st.dataframe(pd.DataFrame(rows), **STRETCH)

@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px  # noqa: F401 -- used by the category pie charts below
 import streamlit as st
 
+from ui import STRETCH
 from analysis import categorize_delays, detect_anomalies_in_delays
 from visualizations import format_ms, hist_with_boundaries
 
@@ -76,7 +77,7 @@ def _show_delay_view(df_delays, column, label, colour):
 
     st.plotly_chart(
         hist_with_boundaries(df_delays, column, f"{label} Distribution", color=colour),
-        use_container_width=True,
+        **STRETCH,
         key=f"delay_hist_{column}",
     )
 
@@ -89,7 +90,7 @@ def _show_delay_view(df_delays, column, label, colour):
             title=f"{label} Categories",
             color="Category", color_discrete_map=CATEGORY_COLOURS,
         )
-        st.plotly_chart(fig, use_container_width=True, key=f"delay_cat_{column}")
+        st.plotly_chart(fig, **STRETCH, key=f"delay_cat_{column}")
 
     if column == "total_delay" and "bottleneck" in df_delays.columns:
         counts = df_delays["bottleneck"].value_counts().reset_index()
@@ -104,7 +105,7 @@ def _show_delay_view(df_delays, column, label, colour):
                 "Cloud Upload": "red",
             },
         )
-        st.plotly_chart(fig, use_container_width=True, key=f"delay_bottleneck_{column}")
+        st.plotly_chart(fig, **STRETCH, key=f"delay_bottleneck_{column}")
 
 
 def _show_anomalies(df_delays):
@@ -122,7 +123,7 @@ def _show_anomalies(df_delays):
         st.info("No anomalies detected in the delay data.")
         return
 
-    st.dataframe(df_delays[df_delays["is_anomaly"]], use_container_width=True)
+    st.dataframe(df_delays[df_delays["is_anomaly"]], **STRETCH)
 
     by_component = {}
     for col in df_delays.columns:
@@ -139,4 +140,4 @@ def _show_anomalies(df_delays):
             x="Component", y="Anomaly Count",
             title="Anomalies by Component", color="Component",
         )
-        st.plotly_chart(fig, use_container_width=True, key="delay_analysis_chart_3")
+        st.plotly_chart(fig, **STRETCH, key="delay_analysis_chart_3")

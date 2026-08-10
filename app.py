@@ -156,7 +156,7 @@ def _sidebar_capture_support():
     )
 
 
-def _sidebar_summary(df_packets, df_tcp, df_udp, df_mqtt):
+def _sidebar_summary(df_packets, df_tcp, df_udp):
     """Capture facts worth having visible from every tab."""
     if df_packets.empty:
         return
@@ -165,13 +165,27 @@ def _sidebar_summary(df_packets, df_tcp, df_udp, df_mqtt):
     st.sidebar.caption("CAPTURE")
 
     duration = df_packets["timestamp"].max() - df_packets["timestamp"].min()
-    left, right = st.sidebar.columns(2)
-    left.metric("Packets", f"{len(df_packets):,}")
-    right.metric("Duration", f"{duration:,.1f} s")
 
-    left, right = st.sidebar.columns(2)
-    left.metric("TCP flows", f"{df_tcp['conn_id'].nunique() if not df_tcp.empty else 0}")
-    right.metric("UDP flows", f"{df_udp['conn_id'].nunique() if not df_udp.empty else 0}")
+    # Plain rows rather than st.metric tiles. The sidebar splits into columns
+    # around 140px wide, which truncates any value longer than a few characters
+    # — "21,368" rendered as "21,...". Text wraps instead of being cut off, and
+    # the full number stays readable.
+    rows = [
+        ("Packets", f"{len(df_packets):,}"),
+        ("Duration", f"{duration:,.1f} s"),
+        ("TCP flows", f"{df_tcp['conn_id'].nunique() if not df_tcp.empty else 0:,}"),
+        ("UDP flows", f"{df_udp['conn_id'].nunique() if not df_udp.empty else 0:,}"),
+    ]
+    st.sidebar.markdown(
+        "\n".join(
+            f"<div style='display:flex;justify-content:space-between;"
+            f"padding:0.15rem 0;font-size:0.9rem'>"
+            f"<span style='opacity:0.7'>{label}</span>"
+            f"<strong>{value}</strong></div>"
+            for label, value in rows
+        ),
+        unsafe_allow_html=True,
+    )
 
     counts = df_packets["protocol"].value_counts()
     st.sidebar.caption("PROTOCOLS")
@@ -196,7 +210,7 @@ def main():
         return
 
     df_packets, df_delays, df_retrans, df_tcp, df_udp, df_mqtt = data
-    _sidebar_summary(df_packets, df_tcp, df_udp, df_mqtt)
+    _sidebar_summary(df_packets, df_tcp, df_udp)
 
     overview, tcp, udp, mqtt, timeline, explore = st.tabs([
         "Overview",

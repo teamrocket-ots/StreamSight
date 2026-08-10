@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from ui import STRETCH
 from visualizations import format_ms
 
 BOTTLENECK_COLOURS = {
@@ -145,7 +146,7 @@ def _show_delay_timeline(frames, available, choice):
             annotation_text=f"Anomaly threshold ({threshold:.3f} ms)",
         )
     fig.update_xaxes(rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True, key="timeline_chart_1")
+    st.plotly_chart(fig, **STRETCH, key="timeline_chart_1")
 
     if "bottleneck" in plot_df.columns and plot_df["bottleneck"].notna().any():
         counts = plot_df["bottleneck"].value_counts().reset_index()
@@ -155,7 +156,7 @@ def _show_delay_timeline(frames, available, choice):
             title="Dominant Delay Contributor",
             color="Bottleneck", color_discrete_map=BOTTLENECK_COLOURS,
         )
-        st.plotly_chart(fig_b, use_container_width=True, key="timeline_chart_2")
+        st.plotly_chart(fig_b, **STRETCH, key="timeline_chart_2")
 
 
 def _show_retransmissions(df_retrans):
@@ -183,7 +184,7 @@ def _show_retransmissions(df_retrans):
                                   line=dict(width=2, color="#E45756")))
     fig.update_yaxes(visible=False)
     fig.update_xaxes(rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True, key="timeline_retrans")
+    st.plotly_chart(fig, **STRETCH, key="timeline_retrans")
 
 
 def _show_correlations(df_delays):
@@ -203,4 +204,4 @@ def _show_correlations(df_delays):
         text_auto=True, color_continuous_scale="RdBu_r",
         title="Delay Component Correlations",
     )
-    st.plotly_chart(fig, use_container_width=True, key="timeline_chart_4")
+    st.plotly_chart(fig, **STRETCH, key="timeline_chart_4")
