@@ -1,15 +1,20 @@
-
-# Ignore the virtual environment
+# Virtual environments
 hackenza_env/
 .venv/
+venv/
 
-
-
+# Python artefacts
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
 
-# Ignore VS Code settings (if using)
+# Editor settings
 .vscode/
+.idea/
 
-requirements.txt
+# Capture files are large; the two small ones under tests/fixtures are kept
+# deliberately as regression fixtures.
+*.pcap
+*.pcapng
+!tests/fixtures/*.pcapng
