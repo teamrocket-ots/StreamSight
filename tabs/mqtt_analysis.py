@@ -1,339 +1,247 @@
-import streamlit as st
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import pandas as pd
-import numpy as np
-import datetime
+import streamlit as st
 
-from visualizations import hist_with_boundaries, mqtt_delay_components
 from analysis import analyze_mqtt_delays
+from tabs.delay_analysis import show_delay_analysis_tab
+from tabs.insights import show_insights_tab
+from visualizations import delay_over_time, hist_with_boundaries, mqtt_delay_components
 
-def show_mqtt_analysis_tab(df_mqtt):
-    """Display MQTT-specific analysis and visualizations"""
-    st.header("MQTT Delay Analysis")
-    
-    if df_mqtt.empty:
-        st.warning("No MQTT data available in the uploaded PCAP file.")
+CATEGORY_COLOURS = {
+    "Low": "green",
+    "Normal": "blue",
+    "High": "orange",
+    "Very High": "red",
+}
+
+COMM_COLUMNS = [
+    "timestamp", "src_ip", "dst_ip", "msg_type_name",
+    "device_to_broker_delay", "broker_processing_delay",
+]
+
+
+def show_mqtt_analysis_tab(df_mqtt, df_delays=None):
+    """MQTT analysis for genuinely decoded (unencrypted) MQTT traffic."""
+    st.header("MQTT")
+
+    if df_mqtt is None or df_mqtt.empty:
+        st.warning("No decoded MQTT data in this capture.")
+        st.caption(
+            "MQTT carried over TLS (port 8883) is encrypted, so message types and "
+            "IDs cannot be read. That traffic is counted as **MQTT (encrypted)** and "
+            "analysed on the **TCP** tab, where transport-level metrics still apply."
+        )
         return
-    
-    # Process data for analysis
-    df_mqtt, stats = analyze_mqtt_delays(df_mqtt)
-    
-    # Overview metrics
-    st.subheader("MQTT Performance Overview")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if "device_to_broker_delay" in df_mqtt.columns:
-            d2b_data = df_mqtt[df_mqtt['device_to_broker_delay'].notna()]
-            if not d2b_data.empty:
-                st.metric("Avg Device→Broker Delay", f"{d2b_data['device_to_broker_delay'].mean():.4f}ms")
-        
-        # Display detected clients and brokers
-        if 'detected_clients' in stats and 'detected_brokers' in stats:
-            st.write("Detected Network Entities:")
-            st.write(f"**Number of Broker(s) - {stats['total_brokers']}:**")
-            st.write(f"**Number of Client(s) - {stats['total_clients']}:**")
-    
-    with col2:
-        if "broker_processing_delay" in df_mqtt.columns:
-            bp_data = df_mqtt[df_mqtt['broker_processing_delay'].notna()]
-            if not bp_data.empty:
-                st.metric("Avg Broker Processing Delay", f"{bp_data['broker_processing_delay'].mean():.4f}ms")
-    
-    # with col3:
-    #     if "cloud_upload_delay" in df_mqtt.columns:
-    #         cu_data = df_mqtt[df_mqtt['cloud_upload_delay'].notna()]
-    #         if not cu_data.empty:
-    #             st.metric("Avg Cloud Upload Delay", f"{cu_data['cloud_upload_delay'].mean():.4f}s")
-    
-    # Create tabs for different analyses
+
+    df_mqtt, stats = analyze_mqtt_delays(df_mqtt.copy())
+
+    _show_overview(df_mqtt, stats)
+
     mqtt_tabs = st.tabs([
-        "Delay Components", 
-        "Client-Broker Delay", 
-        "Broker Processing", 
-        # "Cloud Delay",
-        "Network Topology"
+        "Delay Components",
+        "Client-Broker",
+        "Broker Processing",
+        "Topology",
+        "Delay Breakdown",
+        "Insights",
     ])
-    
+
     with mqtt_tabs[0]:
-        st.subheader("MQTT Delay Component Analysis")
-        
-        # Show delay components visualization
-        st.plotly_chart(mqtt_delay_components(df_mqtt), use_container_width=True)
-        
-        # Show bottleneck analysis if available
-        if "bottleneck" in df_mqtt.columns:
-            bottleneck_counts = df_mqtt["bottleneck"].value_counts().reset_index()
-            bottleneck_counts.columns = ["Bottleneck", "Count"]
-            
-            fig = px.pie(
-                bottleneck_counts,
-                values="Count",
-                names="Bottleneck",
-                title="Distribution of Delay Bottlenecks",
-                color="Bottleneck",
-                color_discrete_map={
-                    "Device→Broker": "blue",
-                    "Broker Processing": "green",
-                    "Cloud Upload": "red"
-                }
-            )
-            st.plotly_chart(fig, use_container_width=True)
-    
+        _show_components(df_mqtt)
     with mqtt_tabs[1]:
-        st.subheader("Client-Broker Delay Analysis")
-        if "device_to_broker_delay" in df_mqtt.columns:
-            d2b_data = df_mqtt[df_mqtt['device_to_broker_delay'].notna()]
-            if not d2b_data.empty:
-                st.plotly_chart(hist_with_boundaries(d2b_data, "device_to_broker_delay", 
-                                               "Client-Broker Delay Distribution", 
-                                               color="blue"), use_container_width=True)
-                
-                # Show delays over time
-                if "timestamp" in df_mqtt.columns:
-                    fig = px.scatter(
-                        d2b_data,
-                        x="timestamp",
-                        y="device_to_broker_delay",
-                        color="msg_type_name" if "msg_type_name" in d2b_data.columns else None,
-                        title="Client-Broker Delay Over Time",
-                        labels={"device_to_broker_delay": "Delay (ms)", "timestamp": "Time"}
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                # Show delay categories
-                if "device_to_broker_delay_category" in df_mqtt.columns:
-                    category_counts = df_mqtt["device_to_broker_delay_category"].value_counts().reset_index()
-                    category_counts.columns = ["Category", "Count"]
-                    
-                    fig = px.bar(
-                        category_counts,
-                        x="Category",
-                        y="Count",
-                        title="Client-Broker Delay Categories",
-                        color="Category",
-                        color_discrete_map={
-                            "Low": "green",
-                            "Normal": "blue",
-                            "High": "orange",
-                            "Very High": "red"
-                        }
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("No Client-Broker delay measurements detected in the data.")
-        else:
-            st.warning("No Client-Broker Delay data available.")
-    
+        _show_delay(df_mqtt, "device_to_broker_delay", "Client-Broker Delay", "blue")
     with mqtt_tabs[2]:
-        st.subheader("Broker Processing Delay Analysis")
-        if "broker_processing_delay" in df_mqtt.columns:
-            bp_data = df_mqtt[df_mqtt['broker_processing_delay'].notna()]
-            if not bp_data.empty:
-                st.plotly_chart(hist_with_boundaries(bp_data, "broker_processing_delay", 
-                                               "Broker Processing Delay Distribution", 
-                                               color="green"), use_container_width=True)
-                
-                # Show delays over time
-                if "timestamp" in df_mqtt.columns:
-                    fig = px.scatter(
-                        bp_data,
-                        x="timestamp",
-                        y="broker_processing_delay",
-                        color="msg_type_name" if "msg_type_name" in bp_data.columns else None,
-                        title="Broker Processing Delay Over Time",
-                        labels={"broker_processing_delay": "Delay (ms)", "timestamp": "Time"}
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                # Show delay by message type
-                if "msg_type_name" in df_mqtt.columns:
-                    bp_by_type = bp_data.groupby("msg_type_name")["broker_processing_delay"].mean().reset_index()
-                    
-                    fig = px.bar(
-                        bp_by_type.sort_values("broker_processing_delay", ascending=False),
-                        x="msg_type_name",
-                        y="broker_processing_delay",
-                        title="Average Broker Processing Delay by Message Type",
-                        labels={"broker_processing_delay": "Average Delay (ms)", 
-                                "msg_type_name": "Message Type"}
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("No Broker Processing delay measurements detected in the data.")
+        _show_delay(df_mqtt, "broker_processing_delay", "Broker Processing Delay", "green")
+    with mqtt_tabs[3]:
+        _show_topology(df_mqtt, stats)
+    with mqtt_tabs[4]:
+        show_delay_analysis_tab(df_delays)
+    with mqtt_tabs[5]:
+        show_insights_tab(df_delays)
+
+
+def _show_overview(df_mqtt, stats):
+    st.subheader("MQTT Performance Overview")
+    col1, col2, col3 = st.columns(3)
+
+    for col, column, label in (
+        (col1, "device_to_broker_delay", "Avg Device→Broker Delay"),
+        (col2, "broker_processing_delay", "Avg Broker Processing Delay"),
+    ):
+        if column in df_mqtt.columns and df_mqtt[column].notna().any():
+            col.metric(label, f"{df_mqtt[column].dropna().mean():.4f} ms")
         else:
-            st.warning("No Broker Processing Delay data available.")
-    
-    # with mqtt_tabs[3]:
-    #     st.subheader("Cloud Upload Delay Analysis")
-    #     if "cloud_upload_delay" in df_mqtt.columns:
-    #         cloud_data = df_mqtt[df_mqtt['cloud_upload_delay'].notna()]
-    #         if not cloud_data.empty:
-    #             st.plotly_chart(hist_with_boundaries(cloud_data, "cloud_upload_delay", 
-    #                                            "Cloud Upload Delay Distribution", 
-    #                                            color="red"), use_container_width=True)
-                
-    #             # Show delays over time
-    #             if "timestamp" in df_mqtt.columns:
-    #                 fig = px.scatter(
-    #                     cloud_data,
-    #                     x="timestamp",
-    #                     y="cloud_upload_delay",
-    #                     title="Cloud Upload Delay Over Time",
-    #                     labels={"cloud_upload_delay": "Delay (s)", "timestamp": "Time"}
-    #                 )
-    #                 st.plotly_chart(fig, use_container_width=True)
-                
-    #             # Show cloud delay categories
-    #             if "cloud_upload_delay_category" in df_mqtt.columns:
-    #                 category_counts = df_mqtt["cloud_upload_delay_category"].value_counts().reset_index()
-    #                 category_counts.columns = ["Category", "Count"]
-                    
-    #                 fig = px.pie(
-    #                     category_counts,
-    #                     values="Count",
-    #                     names="Category",
-    #                     title="Cloud Upload Delay Categories",
-    #                     color="Category",
-    #                     color_discrete_map={
-    #                         "Low": "green",
-    #                         "Normal": "blue",
-    #                         "High": "orange",
-    #                         "Very High": "red"
-    #                     }
-    #                 )
-    #                 st.plotly_chart(fig, use_container_width=True)
-    #         else:
-    #             st.warning("No Cloud Upload delay measurements detected in the data.")
-    #     else:
-    #         st.warning("No Cloud Upload Delay data available.")
-    
-    with mqtt_tabs[3]:  # Network Topology tab
-        st.subheader("Network Topology Analysis")
-        
-        if 'detected_brokers' in stats and 'detected_clients' in stats:
-            # Prepare nodes and edges
-            nodes = []
-            edges = []
-            labels = []
+            col.metric(label, "N/A")
 
-            # Add brokers with IP addresses as labels
-            for broker in stats['detected_brokers']:
-                nodes.append({"id": broker, "label": broker, "type": "broker"})  # Use IP as label
-                labels.append(broker)  # Use IP as label
+    col3.metric("Brokers", f"{stats.get('total_brokers', 0)}")
+    col3.metric("Clients", f"{stats.get('total_clients', 0)}")
 
-            # Add clients with IP addresses as labels
-            for client in stats['detected_clients']:
-                nodes.append({"id": client, "label": client, "type": "client"})  # Use IP as label
-                labels.append(client)  # Use IP as label
-                
-                # Find the broker this client is connected to
-                broker = df_mqtt[(df_mqtt['src_ip'] == client) | (df_mqtt['dst_ip'] == client)]['dst_ip'].unique()
-                if len(broker) > 0:
-                    broker_label = next(n['label'] for n in nodes if n['id'] == broker[0])
-                    edges.append({"from": broker_label, "to": client})
+    # Explain an empty delay table rather than leaving it silently blank.
+    total_messages = stats.get("total_messages", 0)
+    measurable = stats.get("measurable_delays", 0)
+    if total_messages and not measurable:
+        st.info(
+            f"{total_messages} MQTT messages seen, but **0 have a measurable delay**.\n\n"
+            "Delay components pair a PUBLISH with its PUBACK. QoS 0 — the default, and "
+            "what this capture uses — sends no PUBACK, so no end-to-end delay can be "
+            "derived. Capture QoS 1 traffic to populate these metrics."
+        )
 
-            # Prepare coordinates for nodes
-            Xn = []  # X coordinates for nodes
-            Yn = []  # Y coordinates for nodes
-            Xe = []  # X coordinates for edges
-            Ye = []  # Y coordinates for edges
 
-            # Brokers on the left (x=0), clients on the right (x=1)
-            for i, node in enumerate(nodes):
-                if node['type'] == 'broker':
-                    Xn.append(0)  # Brokers on the left
-                    Yn.append(i)  # Spread vertically
-                else:
-                    Xn.append(1)  # Clients on the right
-                    Yn.append(i)  # Spread vertically
+def _show_components(df_mqtt):
+    st.subheader("MQTT Delay Component Analysis")
+    st.plotly_chart(mqtt_delay_components(df_mqtt), use_container_width=True)
 
-            # Prepare edges
-            for edge in edges:
-                from_node = next(n for n in nodes if n['label'] == edge['from'])
-                to_node = next(n for n in nodes if n['label'] == edge['to'])
-                
-                Xe += [Xn[nodes.index(from_node)], Xn[nodes.index(to_node)], None]  # Add None to break the line
-                Ye += [Yn[nodes.index(from_node)], Yn[nodes.index(to_node)], None]
+    if "bottleneck" in df_mqtt.columns and df_mqtt["bottleneck"].notna().any():
+        counts = df_mqtt["bottleneck"].value_counts().reset_index()
+        counts.columns = ["Bottleneck", "Count"]
+        fig = px.pie(
+            counts, values="Count", names="Bottleneck",
+            title="Distribution of Delay Bottlenecks",
+            color="Bottleneck",
+            color_discrete_map={
+                "Device→Broker": "blue",
+                "Broker Processing": "green",
+                "Cloud Upload": "red",
+            },
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-            # Create the graph
-            fig = go.Figure()
 
-            # Add edges (connections)
-            fig.add_trace(go.Scatter(
-                x=Xe,
-                y=Ye,
-                mode='lines',
-                line=dict(color='rgb(210,210,210)', width=1),
-                hoverinfo='none'
-            ))
+def _show_delay(df_mqtt, column, label, colour):
+    st.subheader(f"{label} Analysis")
+    if column not in df_mqtt.columns:
+        st.warning(f"No {label} data available.")
+        return
 
-            # Add nodes (brokers and clients)
-            fig.add_trace(go.Scatter(
-                x=Xn,
-                y=Yn,
-                mode='markers',
-                name='Nodes',
-                marker=dict(
-                    symbol='circle-dot',
-                    size=18,
-                    color=['#6175c1' if n['type'] == 'broker' else '#DB4551' for n in nodes],  # Brokers: blue, Clients: red
-                    line=dict(color='rgb(50,50,50)', width=1)
-                ),
-                text=labels,  # Use IP addresses as labels
-                hoverinfo='text',
-                opacity=0.8
-            ))
+    data = df_mqtt[df_mqtt[column].notna()]
+    if data.empty:
+        st.warning(f"No {label.lower()} measurements detected in this capture.")
+        return
 
-            # Update layout
-            fig.update_layout(
-                title="Client-Broker Network Topology (BLUE: Brokers, RED: Clients)",
-                showlegend=False,
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                height=600,
-                margin=dict(l=40, r=40, b=40, t=40)
-            )
+    st.plotly_chart(
+        hist_with_boundaries(data, column, f"{label} Distribution", color=colour),
+        use_container_width=True,
+    )
 
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("No network topology data available.")
+    if "timestamp" in data.columns:
+        fig, _ = delay_over_time(data, column, label, group_col="msg_type_name")
+        st.plotly_chart(fig, use_container_width=True)
 
-        # Revert to the original table format
-        st.subheader("Message Communication Table")
-        if not df_mqtt.empty:
-            # Create communication table
-            comm_columns = ['timestamp', 'src_ip', 'dst_ip', 'msg_type_name', 
-                            'device_to_broker_delay', 'broker_processing_delay']
-            comm_df = df_mqtt[comm_columns].copy()
-            comm_df['timestamp'] = pd.to_datetime(comm_df['timestamp'], unit='ms')
-            comm_df['direction'] = np.where(
-                comm_df['src_ip'].isin(stats['detected_clients']),
-                'Client→Broker',
-                'Broker→Client'
-            )
-            
-            # Display scrollable table
-            st.dataframe(
-                comm_df.sort_values('timestamp', ascending=False),
-                column_config={
-                    "timestamp": "Time",
-                    "src_ip": "Source",
-                    "dst_ip": "Destination",
-                    "msg_type_name": "Message Type",
-                    "device_to_broker_delay": st.column_config.NumberColumn(
-                        "Client→Broker Delay (ms)",
-                        format="%.4f"
-                    ),
-                    "broker_processing_delay": st.column_config.NumberColumn(
-                        "Processing Delay (ms)",
-                        format="%.4f"
-                    )
-                },
-                height=400,
-                use_container_width=True
-            )
-        else:
-            st.warning("No communication data available for table.")
+    category_col = f"{column}_category"
+    if category_col in df_mqtt.columns and df_mqtt[category_col].notna().any():
+        counts = df_mqtt[category_col].value_counts().reset_index()
+        counts.columns = ["Category", "Count"]
+        fig = px.bar(
+            counts, x="Category", y="Count", title=f"{label} Categories",
+            color="Category", color_discrete_map=CATEGORY_COLOURS,
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+def _show_topology(df_mqtt, stats):
+    st.subheader("Network Topology Analysis")
+
+    brokers = list(stats.get("detected_brokers", []))
+    clients = list(stats.get("detected_clients", []))
+
+    if not brokers and not clients:
+        st.warning("No network topology data available.")
+    else:
+        _draw_topology(df_mqtt, brokers, clients)
+
+    st.subheader("Message Communication Table")
+    # Only select columns that exist: the delay columns are present only when a
+    # PUBLISH/PUBACK pair was found, which QoS-0 captures never produce.
+    available = [c for c in COMM_COLUMNS if c in df_mqtt.columns]
+    if not available:
+        st.warning("No communication data available for the table.")
+        return
+
+    comm_df = df_mqtt[available].copy()
+    if "timestamp" in comm_df.columns:
+        comm_df["timestamp"] = pd.to_datetime(comm_df["timestamp"], unit="s")
+    if "src_ip" in comm_df.columns and clients:
+        comm_df["direction"] = np.where(
+            comm_df["src_ip"].isin(clients), "Client→Broker", "Broker→Client"
+        )
+
+    column_config = {
+        "timestamp": "Time",
+        "src_ip": "Source",
+        "dst_ip": "Destination",
+        "msg_type_name": "Message Type",
+    }
+    for column, label in (
+        ("device_to_broker_delay", "Client→Broker Delay (ms)"),
+        ("broker_processing_delay", "Processing Delay (ms)"),
+    ):
+        if column in comm_df.columns:
+            column_config[column] = st.column_config.NumberColumn(label, format="%.4f")
+
+    sort_col = "timestamp" if "timestamp" in comm_df.columns else available[0]
+    st.dataframe(
+        comm_df.sort_values(sort_col, ascending=False),
+        column_config=column_config,
+        height=400,
+        use_container_width=True,
+    )
+
+
+def _draw_topology(df_mqtt, brokers, clients):
+    """Bipartite client/broker graph.
+
+    Edges are only drawn to IPs actually identified as brokers. Taking the first
+    destination address a client ever talked to yields the client's own IP when a
+    broker-to-client packet sorts first, producing a self-edge or a lookup that
+    raises.
+    """
+    nodes = [{"id": b, "label": b, "type": "broker"} for b in brokers]
+    nodes += [{"id": c, "label": c, "type": "client"} for c in clients]
+    index_by_id = {node["id"]: i for i, node in enumerate(nodes)}
+
+    broker_set = set(brokers)
+    edges = []
+    if {"src_ip", "dst_ip"}.issubset(df_mqtt.columns):
+        for client in clients:
+            involved = df_mqtt[(df_mqtt["src_ip"] == client) | (df_mqtt["dst_ip"] == client)]
+            peers = set(involved["dst_ip"]) | set(involved["src_ip"])
+            for peer in peers & broker_set:
+                if peer in index_by_id:
+                    edges.append((index_by_id[peer], index_by_id[client]))
+
+    xs = [0 if node["type"] == "broker" else 1 for node in nodes]
+    ys = list(range(len(nodes)))
+
+    edge_x, edge_y = [], []
+    for source, target in edges:
+        edge_x += [xs[source], xs[target], None]
+        edge_y += [ys[source], ys[target], None]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=edge_x, y=edge_y, mode="lines",
+        line=dict(color="rgb(210,210,210)", width=1), hoverinfo="none",
+    ))
+    fig.add_trace(go.Scatter(
+        x=xs, y=ys, mode="markers+text",
+        marker=dict(
+            symbol="circle-dot", size=18,
+            color=["#6175c1" if n["type"] == "broker" else "#DB4551" for n in nodes],
+            line=dict(color="rgb(50,50,50)", width=1),
+        ),
+        text=[n["label"] for n in nodes],
+        textposition="middle right",
+        hoverinfo="text", opacity=0.85,
+    ))
+    fig.update_layout(
+        title="Client-Broker Topology (blue: brokers, red: clients)",
+        showlegend=False,
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.3, 1.6]),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        height=max(300, 60 * max(len(nodes), 1)),
+        margin=dict(l=40, r=40, b=40, t=60),
+    )
+    st.plotly_chart(fig, use_container_width=True)
